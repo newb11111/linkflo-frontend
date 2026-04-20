@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import PageForm from "../../../../components/admin/PageForm"
 import { API_URL } from "../../../../lib/config"
+import { getAdminHeaders } from "../../../../lib/adminAuth"
 
 const defaultReviews = [
   { image: "", content: "", name: "" },
@@ -47,7 +48,7 @@ export default function EditPage() {
     const run = async () => {
       try {
         const res = await fetch(`${API_URL}/api/admin/page/${params.id}`, {
-          credentials: "include",
+          headers: getAdminHeaders(),
         })
 
         const json = await res.json()

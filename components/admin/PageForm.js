@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { API_URL, getSiteOrigin } from "../../lib/config"
+import { getAdminHeaders } from "../../lib/adminAuth"
 
 const apiBase = API_URL
 
@@ -175,8 +176,8 @@ export default function PageForm({
       setMessage("Uploading image...")
       const res = await fetch(`${apiBase}/api/admin/upload`, {
         method: "POST",
+        headers: getAdminHeaders(),
         body,
-        credentials: "include",
       })
 
       const json = await res.json()
@@ -218,8 +219,7 @@ export default function PageForm({
 
       const res = await fetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: getAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
       })
 

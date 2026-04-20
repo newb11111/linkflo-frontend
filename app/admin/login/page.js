@@ -21,7 +21,6 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json"
         },
-        credentials: "include",
         body: JSON.stringify({ password })
       })
 
@@ -31,7 +30,9 @@ export default function LoginPage() {
         throw new Error(data.message || "Wrong password")
       }
 
-      sessionStorage.setItem("admin_unlocked", "true")
+      // ✅ 存 password（重点）
+      localStorage.setItem("admin_password", password)
+
       router.replace("/admin")
     } catch (err) {
       setError(err.message || "Login failed")

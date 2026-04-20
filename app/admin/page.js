@@ -2,23 +2,35 @@
 
 import { useEffect, useState } from "react"
 import { API_URL } from "../../lib/config"
+import { getAdminHeaders } from "../../lib/adminAuth"
 
 export default function AdminHome() {
   const [stats, setStats] = useState(null)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     const fetchStats = async () => {
-      const res = await fetch(`${API_URL}/api/admin/stats`, {
-        credentials: "include"
-      })
+      try {
+        const res = await fetch(`${API_URL}/api/admin/stats`, {
+          headers: getAdminHeaders()
+        })
 
-      const data = await res.json()
-      setStats(data)
+        const data = await res.json()
+
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to load stats")
+        }
+
+        setStats(data)
+      } catch (err) {
+        setError(err.message || "Failed to load stats")
+      }
     }
 
     fetchStats()
   }, [])
 
+  if (error) return <div style={{ padding: 24 }}>{error}</div>
   if (!stats) return <div style={{ padding: 24 }}>Loading...</div>
 
   return (

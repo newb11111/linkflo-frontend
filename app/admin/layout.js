@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { API_URL } from "../../lib/config"
+import { getAdminPassword, getAdminHeaders } from "../../lib/adminAuth"
 
 const items = [
   { label: "Dashboard", href: "/admin" },
@@ -24,18 +25,21 @@ export default function AdminLayout({ children }) {
   const isLoginPage = pathname === "/admin/login"
 
   const logoutAndGoLogin = async () => {
-    try {
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem("admin_unlocked")
-      }
+    const password = getAdminPassword()
 
+    try {
       await fetch(`${API_URL}/api/admin/logout`, {
         method: "POST",
-        credentials: "include"
+        headers: getAdminHeaders({
+          "Content-Type": "application/json"
+        })
       })
     } catch (error) {
       // 忽略 logout 失败，前端照样跳转
     } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("admin_password")
+      }
       router.replace("/admin/login")
     }
   }
@@ -48,33 +52,29 @@ export default function AdminLayout({ children }) {
 
     const checkAuth = async () => {
       try {
-        const unlocked =
-          typeof window !== "undefined"
-            ? sessionStorage.getItem("admin_unlocked")
-            : null
+        const password = getAdminPassword()
 
-        // 每次重新进入 admin，都要求重新登录
-        if (unlocked !== "true") {
+        if (!password) {
           router.replace("/admin/login")
           return
         }
 
         const res = await fetch(`${API_URL}/api/admin/check`, {
-          credentials: "include"
+          headers: getAdminHeaders()
         })
 
         const data = await res.json()
 
         if (!res.ok || !data.loggedIn) {
           if (typeof window !== "undefined") {
-            sessionStorage.removeItem("admin_unlocked")
+            localStorage.removeItem("admin_password")
           }
           router.replace("/admin/login")
           return
         }
       } catch (error) {
         if (typeof window !== "undefined") {
-          sessionStorage.removeItem("admin_unlocked")
+          localStorage.removeItem("admin_password")
         }
         router.replace("/admin/login")
         return

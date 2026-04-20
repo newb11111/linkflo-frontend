@@ -3,20 +3,32 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { API_URL } from "../../../lib/config"
+import { getAdminHeaders } from "../../../lib/adminAuth"
 
 export default function Customers() {
   const [pages, setPages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const loadPages = async () => {
     try {
       setLoading(true)
+      setError("")
+
       const res = await fetch(`${API_URL}/api/admin/pages`, {
-        credentials: "include"
+        headers: getAdminHeaders()
       })
+
       const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to load pages")
+      }
+
       setPages(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setError(err.message || "Failed to load pages")
     } finally {
       setLoading(false)
     }
@@ -32,13 +44,14 @@ export default function Customers() {
 
     const res = await fetch(`${API_URL}/api/admin/page/${id}`, {
       method: "DELETE",
-      credentials: "include"
+      headers: getAdminHeaders()
     })
 
     if (res.ok) {
       loadPages()
     } else {
-      alert("Delete failed")
+      const data = await res.json().catch(() => ({}))
+      alert(data.message || "Delete failed")
     }
   }
 
@@ -53,6 +66,7 @@ export default function Customers() {
       </div>
 
       {loading ? <p>Loading...</p> : null}
+      {error ? <p style={{ color: "#b42318" }}>{error}</p> : null}
 
       <div style={styles.list}>
         {pages.map((page) => (

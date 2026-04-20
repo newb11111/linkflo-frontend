@@ -1,4 +1,4 @@
-# LinkFlo Frontend
+# LinkFlo Frontend (Vercel Version)
 
 ## Local development
 
@@ -14,19 +14,36 @@ NEXT_PUBLIC_API_URL=https://api.linkflo.club
 NEXT_PUBLIC_SITE_URL=https://linkflo.club
 ```
 
-## Target architecture
+## Recommended architecture
 
-- Frontend: Cloudflare Pages
+- Frontend: Vercel
 - Backend: your local computer
 - API: Cloudflare Tunnel
 - Database: Neon
 - Images: Cloudflare R2
 
-## Cloudflare Pages env vars
+## Vercel settings
 
-Add these in Pages settings:
+Framework preset:
+- Next.js
+
+Build command:
+- `npm run build`
+
+Install command:
+- `npm install`
+
+## Vercel environment variables
+
+Add these in Vercel Project Settings -> Environment Variables:
 
 ```env
 NEXT_PUBLIC_API_URL=https://api.linkflo.club
 NEXT_PUBLIC_SITE_URL=https://linkflo.club
 ```
+
+## Notes
+
+- This version keeps your current dynamic slug logic.
+- `/` and `/[slug]` are rendered dynamically and fetch data from your backend.
+- Your backend and cloudflared tunnel must stay running on your computer.

@@ -9,6 +9,7 @@ export default function Customers() {
   const [pages, setPages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [busyId, setBusyId] = useState("")
   const router = useRouter()
 
   const loadPages = async () => {
@@ -55,13 +56,35 @@ export default function Customers() {
     }
   }
 
+  const handleToggleHidden = async (page) => {
+    try {
+      setBusyId(page.id)
+      const res = await fetch(`${API_URL}/api/admin/page/${page.id}/visibility`, {
+        method: "PATCH",
+        headers: getAdminHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ isHidden: !page.isHidden })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to update visibility")
+      }
+
+      await loadPages()
+    } catch (err) {
+      alert(err.message || "Failed to update visibility")
+    } finally {
+      setBusyId("")
+    }
+  }
+
   return (
     <div style={{ padding: 24 }}>
       <div style={styles.hero}>
         <div>
           <p style={styles.kicker}>Customers</p>
           <h1 style={styles.title}>Customer Pages</h1>
-          <p style={styles.desc}>Preview, edit, or delete every landing page from one place.</p>
+          <p style={styles.desc}>Preview, edit, hide, or delete every landing page from one place.</p>
         </div>
       </div>
 
@@ -75,6 +98,7 @@ export default function Customers() {
               <div style={styles.nameRow}>
                 <strong>{page.name}</strong>
                 <span style={styles.badge}>{page.packageType}</span>
+                {page.isHidden ? <span style={styles.hiddenBadge}>Hidden</span> : null}
               </div>
               <p style={styles.meta}>/{page.slug}</p>
               <p style={styles.meta}>{page.whatsapp || "No WhatsApp"}</p>
@@ -83,6 +107,13 @@ export default function Customers() {
             <div style={styles.actions}>
               <a href={`/${page.slug}`} target="_blank" style={styles.previewButton}>Preview</a>
               <button onClick={() => router.push(`/admin/edit/${page.id}`)} style={styles.editButton}>Edit</button>
+              <button
+                onClick={() => handleToggleHidden(page)}
+                style={page.isHidden ? styles.unhideButton : styles.hideButton}
+                disabled={busyId === page.id}
+              >
+                {busyId === page.id ? "Saving..." : page.isHidden ? "Unhide" : "Hide"}
+              </button>
               <button onClick={() => handleDelete(page.id, page.name)} style={styles.deleteButton}>Delete</button>
             </div>
           </div>
@@ -118,9 +149,12 @@ const styles = {
   },
   nameRow: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
   badge: { background: "#eef2ff", color: "#3730a3", padding: "6px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, textTransform: "uppercase" },
+  hiddenBadge: { background: "#fef3c7", color: "#92400e", padding: "6px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, textTransform: "uppercase" },
   meta: { margin: "6px 0 0", color: "#667085" },
   actions: { display: "flex", gap: 10, flexWrap: "wrap" },
   previewButton: { textDecoration: "none", padding: "10px 14px", background: "#111827", color: "white", borderRadius: 12 },
   editButton: { padding: "10px 14px", background: "#2563eb", color: "white", border: "none", borderRadius: 12, cursor: "pointer" },
+  hideButton: { padding: "10px 14px", background: "#fef3c7", color: "#92400e", border: "none", borderRadius: 12, cursor: "pointer" },
+  unhideButton: { padding: "10px 14px", background: "#dcfce7", color: "#166534", border: "none", borderRadius: 12, cursor: "pointer" },
   deleteButton: { padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", border: "none", borderRadius: 12, cursor: "pointer" }
 }

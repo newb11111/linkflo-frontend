@@ -6,11 +6,7 @@ import PageForm from "../../../../components/admin/PageForm"
 import { API_URL } from "../../../../lib/config"
 import { getAdminHeaders } from "../../../../lib/adminAuth"
 
-const defaultReviews = [
-  { image: "", content: "", name: "" },
-  { image: "", content: "", name: "" },
-  { image: "", content: "", name: "" },
-]
+const defaultReviewItem = { image: "", text: "", name: "" }
 
 function safeArray(value, fallback = []) {
   if (Array.isArray(value)) return value
@@ -27,10 +23,26 @@ function safeArray(value, fallback = []) {
   return fallback
 }
 
+function normalizeReviewItem(item = {}) {
+  return {
+    image: item.image || "",
+    text: item.text || item.content || "",
+    name: item.name || "",
+  }
+}
+
 function normalizePageData(data = {}) {
+  const reviews = data.reviews && typeof data.reviews === "object" && !Array.isArray(data.reviews)
+    ? data.reviews
+    : {}
+
   return {
     ...data,
-    reviews: safeArray(data.reviews, defaultReviews),
+    reviews: {
+      title: reviews.title || "",
+      image: reviews.image || "",
+      items: safeArray(reviews.items, [defaultReviewItem, defaultReviewItem, defaultReviewItem]).map(normalizeReviewItem),
+    },
     features: safeArray(data.features, []),
     faqs: safeArray(data.faqs, []),
     gallery: safeArray(data.gallery, []),

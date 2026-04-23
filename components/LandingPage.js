@@ -124,6 +124,7 @@ export default function LandingPage({ data = {} }) {
 
   return (
     <div className="min-h-screen bg-[#f7f4ee] text-slate-800">
+      <h1 style={{color: "red"}}>TEST 24 APR</h1>
       {isProPlus ? (
         <>
           <header className="fixed inset-x-0 top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">

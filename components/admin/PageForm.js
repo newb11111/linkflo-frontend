@@ -6,51 +6,83 @@ import { getAdminHeaders } from "../../lib/adminAuth"
 
 const apiBase = API_URL
 
-const emptyReview = { image: "", text: "", name: "" }
-const emptyMenu = { name: "", desc: "", price: "", image: "" }
-
-function buildInitialData(initialData = {}, whatsapp = "") {
-  return {
-    brandName: initialData.brandName || "",
-    hero: {
-      title: initialData.hero?.title || "",
-      subtitle: initialData.hero?.subtitle || "",
-      image: initialData.hero?.image || "",
-    },
-    pain: {
-      title: initialData.pain?.title || "",
-      subtitle: initialData.pain?.subtitle || "",
-      image: initialData.pain?.image || "",
-      points: initialData.pain?.points?.length ? initialData.pain.points : ["", "", ""],
-    },
-    videos: initialData.videos?.length ? initialData.videos : [{ url: "" }],
-    videoTitle: initialData.videoTitle || "",
-    proImageTitle: initialData.proImageTitle || "",
-    proImage: initialData.proImage || "",
-    reviews: {
-      title: initialData.reviews?.title || "",
-      image: initialData.reviews?.image || "",
-      items: initialData.reviews?.items?.length
-        ? initialData.reviews.items
-        : [{ ...emptyReview }, { ...emptyReview }, { ...emptyReview }],
-    },
-    menuTitle: initialData.menuTitle || "",
-    menu: initialData.menu?.length
-      ? initialData.menu
-      : [{ ...emptyMenu }, { ...emptyMenu }, { ...emptyMenu }],
-    cta: {
-      title: initialData.cta?.title || "",
-      subtitle: initialData.cta?.subtitle || "",
-      buttonText: initialData.cta?.buttonText || "",
-      whatsapp: initialData.cta?.whatsapp || whatsapp || "",
-    },
-  }
+const defaultSections = {
+  hero: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    ctaText: "",
+    whatsappMessage: "",
+  },
+  problem: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    items: [{ title: "", desc: "", image: "" }],
+  },
+  conversion: {
+    title: "",
+    subtitle: "",
+    image: "",
+  },
+  solution: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    items: [{ title: "", desc: "", image: "" }],
+  },
+  process: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    items: [{ title: "", desc: "", image: "" }],
+  },
+  showcase: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    items: [{ title: "", desc: "", image: "", youtubeUrl: "" }],
+  },
+  reviews: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    items: [{ name: "", text: "", image: "" }],
+  },
+  offer: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    items: [{ name: "", desc: "", price: "", image: "" }],
+  },
+  faq: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    items: [{ q: "", a: "" }],
+  },
+  cta: {
+    title: "",
+    subtitle: "",
+    backgroundImage: "",
+    buttonText: "",
+    whatsappMessage: "",
+  },
 }
 
-const PACKAGE_SECTIONS = {
-  starter: ["basic", "hero", "cta"],
-  pro: ["basic", "hero", "pain", "reviews", "cta"],
-  proplus: ["basic", "hero", "pain", "video", "reviews", "menu", "cta"],
+function mergeSections(initialData = {}) {
+  const sections = initialData.sections || {}
+
+  return Object.fromEntries(
+    Object.entries(defaultSections).map(([key, value]) => [
+      key,
+      {
+        ...value,
+        ...(sections[key] || {}),
+        items: sections[key]?.items?.length ? sections[key].items : value.items,
+      },
+    ])
+  )
 }
 
 export default function PageForm({
@@ -62,17 +94,17 @@ export default function PageForm({
   onSuccess,
 }) {
   const [form, setForm] = useState({
-    name: initialForm?.name || "",
-    whatsapp: initialForm?.whatsapp || "",
-    plan: initialForm?.plan || initialForm?.packageType || "starter",
+    name: initialForm?.name || initialData?.brandName || "",
+    whatsapp: initialForm?.whatsapp || initialData?.whatsapp || "",
+    packageType:
+      initialForm?.packageType ||
+      initialForm?.plan ||
+      initialData?.packageType ||
+      "proplus",
   })
 
-  const [data, setData] = useState(() =>
-    buildInitialData(initialData, initialForm?.whatsapp)
-  )
-  const [result, setResult] = useState(
-    slug ? `${getSiteOrigin()}/${slug}` : ""
-  )
+  const [sections, setSections] = useState(() => mergeSections(initialData))
+  const [result, setResult] = useState(slug ? `${getSiteOrigin()}/${slug}` : "")
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
 
@@ -81,15 +113,12 @@ export default function PageForm({
     [mode]
   )
 
-  const visibleSections = PACKAGE_SECTIONS[form.plan] || PACKAGE_SECTIONS.starter
-  const showSection = (key) => visibleSections.includes(key)
-
-  const setTopField = (field, value) => {
+  const setFormField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  const updateSectionField = (section, field, value) => {
-    setData((prev) => ({
+  const updateSection = (section, field, value) => {
+    setSections((prev) => ({
       ...prev,
       [section]: {
         ...prev[section],
@@ -98,72 +127,39 @@ export default function PageForm({
     }))
   }
 
-  const updateArrayField = (path, index, field, value) => {
-    setData((prev) => {
-      const keys = path.split(".")
-      const rootKey = keys[0]
-
-      if (keys.length === 1) {
-        const currentArray = Array.isArray(prev[rootKey]) ? prev[rootKey] : []
-        const next = [...currentArray]
-
-        if (!next[index]) next[index] = {}
-        next[index] = {
-          ...next[index],
-          [field]: value,
-        }
-
-        return {
-          ...prev,
-          [rootKey]: next,
-        }
-      }
-
-      if (keys.length === 2) {
-        const parentKey = keys[0]
-        const childKey = keys[1]
-        const parentObject =
-          prev[parentKey] && typeof prev[parentKey] === "object" ? prev[parentKey] : {}
-
-        const currentArray = Array.isArray(parentObject[childKey])
-          ? parentObject[childKey]
-          : []
-
-        const next = [...currentArray]
-
-        if (!next[index]) next[index] = {}
-        next[index] = {
-          ...next[index],
-          [field]: value,
-        }
-
-        return {
-          ...prev,
-          [parentKey]: {
-            ...parentObject,
-            [childKey]: next,
-          },
-        }
-      }
-
-      return prev
-    })
-  }
-
-  const updatePainPoint = (index, value) => {
-    setData((prev) => {
-      const currentPoints = Array.isArray(prev.pain?.points) ? prev.pain.points : ["", "", ""]
-      const nextPoints = [...currentPoints]
-      nextPoints[index] = value
+  const updateItem = (section, index, field, value) => {
+    setSections((prev) => {
+      const items = [...(prev[section]?.items || [])]
+      items[index] = { ...items[index], [field]: value }
 
       return {
         ...prev,
-        pain: {
-          ...prev.pain,
-          points: nextPoints,
+        [section]: {
+          ...prev[section],
+          items,
         },
       }
     })
+  }
+
+  const addItem = (section, item) => {
+    setSections((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        items: [...(prev[section]?.items || []), item],
+      },
+    }))
+  }
+
+  const removeItem = (section, index) => {
+    setSections((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        items: prev[section].items.filter((_, i) => i !== index),
+      },
+    }))
   }
 
   const handleUpload = async (file, apply) => {
@@ -174,6 +170,7 @@ export default function PageForm({
 
     try {
       setMessage("Uploading image...")
+
       const res = await fetch(`${apiBase}/api/admin/upload`, {
         method: "POST",
         headers: getAdminHeaders(),
@@ -187,8 +184,8 @@ export default function PageForm({
 
       apply(json.url)
       setMessage("Image uploaded")
-    } catch (error) {
-      setMessage(error.message || "Upload failed")
+    } catch (err) {
+      setMessage(err.message || "Upload failed")
     }
   }
 
@@ -202,23 +199,20 @@ export default function PageForm({
           ? `${apiBase}/api/admin/page/${pageId}`
           : `${apiBase}/api/admin/create`
 
-      const method = mode === "edit" ? "PUT" : "POST"
-
       const payload = {
         name: form.name,
         whatsapp: form.whatsapp,
-        packageType: form.plan,
+        packageType: form.packageType,
         data: {
-          ...data,
-          cta: {
-            ...data.cta,
-            whatsapp: data.cta.whatsapp || form.whatsapp,
-          },
+          brandName: form.name,
+          whatsapp: form.whatsapp,
+          packageType: form.packageType,
+          sections,
         },
       }
 
       const res = await fetch(endpoint, {
-        method,
+        method: mode === "edit" ? "PUT" : "POST",
         headers: getAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
       })
@@ -227,14 +221,12 @@ export default function PageForm({
       if (!res.ok) throw new Error(json.message || "Save failed")
 
       const finalSlug = json.slug || json.page?.slug || slug
-      if (finalSlug) {
-        setResult(`${getSiteOrigin()}/${finalSlug}`)
-      }
+      if (finalSlug) setResult(`${getSiteOrigin()}/${finalSlug}`)
 
       setMessage(mode === "edit" ? "Saved successfully" : "Page created successfully")
       onSuccess?.(json)
-    } catch (error) {
-      setMessage(error.message || "Something went wrong")
+    } catch (err) {
+      setMessage(err.message || "Something went wrong")
     } finally {
       setSaving(false)
     }
@@ -244,10 +236,10 @@ export default function PageForm({
     <div style={styles.wrapper}>
       <div style={styles.headerCard}>
         <div>
-          <p style={styles.eyebrow}>{mode === "edit" ? "Customer editor" : "New landing page"}</p>
+          <p style={styles.eyebrow}>LinkFlo Admin V2</p>
           <h1 style={styles.title}>{pageTitle}</h1>
           <p style={styles.subtitle}>
-            先选 package，再显示相应要填的栏位，助理会更容易操作。
+            这版会生成 data.sections，专门配合 V2 Landing Page。
           </p>
         </div>
 
@@ -259,314 +251,146 @@ export default function PageForm({
         ) : null}
       </div>
 
-      <div style={styles.packageGuide}>
-        <div style={styles.packageGuideText}>
-          <p style={styles.packageGuideMini}>Current Package</p>
-          <h3 style={styles.packageGuideTitle}>{form.plan}</h3>
-          <p style={styles.packageGuideDesc}>
-            {form.plan === "starter" && "只显示基础转化栏位：Basic、Hero、CTA"}
-            {form.plan === "pro" && "显示进阶栏位：Basic、Hero、Pain、Reviews、CTA"}
-            {form.plan === "proplus" && "显示完整高阶栏位：全部 section"}
-          </p>
-        </div>
+      <SectionCard title="Basic Info">
+        <Field label="品牌名 / Brand Name">
+          <input
+            value={form.name}
+            onChange={(e) => setFormField("name", e.target.value)}
+            style={styles.input}
+          />
+        </Field>
 
-        <div style={styles.planRow}>
-          {["starter", "pro", "proplus"].map((plan) => (
-            <button
-              key={plan}
-              type="button"
-              onClick={() => setTopField("plan", plan)}
-              style={{
-                ...styles.planButton,
-                ...(form.plan === plan ? styles.planButtonActive : {}),
-              }}
-            >
-              {plan}
-            </button>
-          ))}
-        </div>
-      </div>
+        <Field label="WhatsApp">
+          <input
+            value={form.whatsapp}
+            onChange={(e) => setFormField("whatsapp", e.target.value)}
+            style={styles.input}
+          />
+        </Field>
+
+        <Field label="Package Type">
+          <select
+            value={form.packageType}
+            onChange={(e) => setFormField("packageType", e.target.value)}
+            style={styles.input}
+          >
+            <option value="starter">starter</option>
+            <option value="pro">pro</option>
+            <option value="proplus">proplus</option>
+          </select>
+        </Field>
+      </SectionCard>
 
       <div style={styles.grid}>
-        {showSection("basic") && (
-          <SectionCard title="Basic">
-            <Field label="品牌名">
-              <input
-                value={form.name}
-                onChange={(e) => setTopField("name", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
+        <HeroSection
+          section={sections.hero}
+          updateSection={updateSection}
+          handleUpload={handleUpload}
+        />
 
-            <Field label="WhatsApp">
-              <input
-                value={form.whatsapp}
-                onChange={(e) => setTopField("whatsapp", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
+        <ListSection
+          title="Problem"
+          sectionKey="problem"
+          section={sections.problem}
+          itemTemplate={{ title: "", desc: "", image: "" }}
+          updateSection={updateSection}
+          updateItem={updateItem}
+          addItem={addItem}
+          removeItem={removeItem}
+          handleUpload={handleUpload}
+          fields={["title", "desc", "image"]}
+        />
 
-            <Field label="Brand Name（Header 显示）">
-              <input
-                value={data.brandName}
-                onChange={(e) => setData((prev) => ({ ...prev, brandName: e.target.value }))}
-                style={styles.input}
-              />
-            </Field>
-          </SectionCard>
-        )}
+        <ConversionSection
+          section={sections.conversion}
+          updateSection={updateSection}
+          handleUpload={handleUpload}
+        />
 
-        {showSection("hero") && (
-          <SectionCard title="Hero">
-            <Field label="标题">
-              <input
-                value={data.hero.title}
-                onChange={(e) => updateSectionField("hero", "title", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
+        <ListSection
+          title="Solution"
+          sectionKey="solution"
+          section={sections.solution}
+          itemTemplate={{ title: "", desc: "", image: "" }}
+          updateSection={updateSection}
+          updateItem={updateItem}
+          addItem={addItem}
+          removeItem={removeItem}
+          handleUpload={handleUpload}
+          fields={["title", "desc", "image"]}
+        />
 
-            <Field label="副标题">
-              <input
-                value={data.hero.subtitle}
-                onChange={(e) => updateSectionField("hero", "subtitle", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
+        <ListSection
+          title="Process"
+          sectionKey="process"
+          section={sections.process}
+          itemTemplate={{ title: "", desc: "", image: "" }}
+          updateSection={updateSection}
+          updateItem={updateItem}
+          addItem={addItem}
+          removeItem={removeItem}
+          handleUpload={handleUpload}
+          fields={["title", "desc", "image"]}
+        />
 
-            <ImageField
-              label="Hero 图片"
-              value={data.hero.image}
-              onChange={(value) => updateSectionField("hero", "image", value)}
-              onUpload={(file) =>
-                handleUpload(file, (url) => updateSectionField("hero", "image", url))
-              }
-            />
-          </SectionCard>
-        )}
+        <ListSection
+          title="Showcase"
+          sectionKey="showcase"
+          section={sections.showcase}
+          itemTemplate={{ title: "", desc: "", image: "", youtubeUrl: "" }}
+          updateSection={updateSection}
+          updateItem={updateItem}
+          addItem={addItem}
+          removeItem={removeItem}
+          handleUpload={handleUpload}
+          fields={["title", "desc", "image", "youtubeUrl"]}
+        />
 
-        {showSection("pain") && (
-          <SectionCard title="Pain / Problem">
-            <Field label="Section 标题">
-              <input
-                value={data.pain.title}
-                onChange={(e) => updateSectionField("pain", "title", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
+        <ListSection
+          title="Reviews"
+          sectionKey="reviews"
+          section={sections.reviews}
+          itemTemplate={{ name: "", text: "", image: "" }}
+          updateSection={updateSection}
+          updateItem={updateItem}
+          addItem={addItem}
+          removeItem={removeItem}
+          handleUpload={handleUpload}
+          fields={["name", "text", "image"]}
+        />
 
-            <Field label="Section 副标题">
-              <input
-                value={data.pain.subtitle}
-                onChange={(e) => updateSectionField("pain", "subtitle", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
+        <ListSection
+          title="Offer"
+          sectionKey="offer"
+          section={sections.offer}
+          itemTemplate={{ name: "", desc: "", price: "", image: "" }}
+          updateSection={updateSection}
+          updateItem={updateItem}
+          addItem={addItem}
+          removeItem={removeItem}
+          handleUpload={handleUpload}
+          fields={["name", "desc", "price", "image"]}
+        />
 
-            <ImageField
-              label="Pain 图片"
-              value={data.pain.image}
-              onChange={(value) => updateSectionField("pain", "image", value)}
-              onUpload={(file) =>
-                handleUpload(file, (url) => updateSectionField("pain", "image", url))
-              }
-            />
+        <ListSection
+          title="FAQ"
+          sectionKey="faq"
+          section={sections.faq}
+          itemTemplate={{ q: "", a: "" }}
+          updateSection={updateSection}
+          updateItem={updateItem}
+          addItem={addItem}
+          removeItem={removeItem}
+          handleUpload={handleUpload}
+          fields={["q", "a"]}
+          noBackgroundImage={false}
+        />
 
-            {data.pain.points.map((point, index) => (
-              <Field key={index} label={`问题 ${index + 1}`}>
-                <input
-                  value={point}
-                  onChange={(e) => updatePainPoint(index, e.target.value)}
-                  style={styles.input}
-                />
-              </Field>
-            ))}
-          </SectionCard>
-        )}
-
-        {showSection("video") && (
-          <SectionCard title="Video / Pro Image">
-            <Field label="Video 标题">
-              <input
-                value={data.videoTitle}
-                onChange={(e) => setData((prev) => ({ ...prev, videoTitle: e.target.value }))}
-                style={styles.input}
-              />
-            </Field>
-
-            <Field label="YouTube URL 1">
-              <input
-                value={data.videos[0]?.url || ""}
-                onChange={(e) => updateArrayField("videos", 0, "url", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
-
-            <Field label="Pro 图片标题">
-              <input
-                value={data.proImageTitle}
-                onChange={(e) => setData((prev) => ({ ...prev, proImageTitle: e.target.value }))}
-                style={styles.input}
-              />
-            </Field>
-
-            <ImageField
-              label="Pro 展示图"
-              value={data.proImage}
-              onChange={(value) => setData((prev) => ({ ...prev, proImage: value }))}
-              onUpload={(file) =>
-                handleUpload(file, (url) => setData((prev) => ({ ...prev, proImage: url })))
-              }
-            />
-          </SectionCard>
-        )}
-
-        {showSection("reviews") && (
-          <SectionCard title="Reviews">
-            <Field label="Review 标题">
-              <input
-                value={data.reviews.title}
-                onChange={(e) => updateSectionField("reviews", "title", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
-
-            <ImageField
-              label="Review Section 图片"
-              value={data.reviews.image}
-              onChange={(value) => updateSectionField("reviews", "image", value)}
-              onUpload={(file) =>
-                handleUpload(file, (url) => updateSectionField("reviews", "image", url))
-              }
-            />
-
-            {data.reviews.items.map((item, index) => (
-              <div key={index} style={styles.subCard}>
-                <p style={styles.subCardTitle}>Review {index + 1}</p>
-
-                <ImageField
-                  label="图片"
-                  value={item.image || ""}
-                  onChange={(value) => updateArrayField("reviews.items", index, "image", value)}
-                  onUpload={(file) =>
-                    handleUpload(file, (url) =>
-                      updateArrayField("reviews.items", index, "image", url)
-                    )
-                  }
-                  compact
-                />
-
-                <Field label="内容">
-                  <input
-                    value={item.text || ""}
-                    onChange={(e) =>
-                      updateArrayField("reviews.items", index, "text", e.target.value)
-                    }
-                    style={styles.input}
-                  />
-                </Field>
-
-                <Field label="名字">
-                  <input
-                    value={item.name || ""}
-                    onChange={(e) =>
-                      updateArrayField("reviews.items", index, "name", e.target.value)
-                    }
-                    style={styles.input}
-                  />
-                </Field>
-              </div>
-            ))}
-          </SectionCard>
-        )}
-
-        {showSection("menu") && (
-          <SectionCard title="Menu">
-            <Field label="Menu 标题">
-              <input
-                value={data.menuTitle}
-                onChange={(e) => setData((prev) => ({ ...prev, menuTitle: e.target.value }))}
-                style={styles.input}
-              />
-            </Field>
-
-            {data.menu.map((item, index) => (
-              <div key={index} style={styles.subCard}>
-                <p style={styles.subCardTitle}>Menu {index + 1}</p>
-
-                <Field label="产品名">
-                  <input
-                    value={item.name || ""}
-                    onChange={(e) => updateArrayField("menu", index, "name", e.target.value)}
-                    style={styles.input}
-                  />
-                </Field>
-
-                <Field label="描述">
-                  <input
-                    value={item.desc || ""}
-                    onChange={(e) => updateArrayField("menu", index, "desc", e.target.value)}
-                    style={styles.input}
-                  />
-                </Field>
-
-                <Field label="价格">
-                  <input
-                    value={item.price || ""}
-                    onChange={(e) => updateArrayField("menu", index, "price", e.target.value)}
-                    style={styles.input}
-                  />
-                </Field>
-
-                <ImageField
-                  label="图片"
-                  value={item.image || ""}
-                  onChange={(value) => updateArrayField("menu", index, "image", value)}
-                  onUpload={(file) =>
-                    handleUpload(file, (url) => updateArrayField("menu", index, "image", url))
-                  }
-                  compact
-                />
-              </div>
-            ))}
-          </SectionCard>
-        )}
-
-        {showSection("cta") && (
-          <SectionCard title="CTA">
-            <Field label="标题">
-              <input
-                value={data.cta.title}
-                onChange={(e) => updateSectionField("cta", "title", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
-
-            <Field label="副标题">
-              <input
-                value={data.cta.subtitle}
-                onChange={(e) => updateSectionField("cta", "subtitle", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
-
-            <Field label="按钮文字">
-              <input
-                value={data.cta.buttonText}
-                onChange={(e) => updateSectionField("cta", "buttonText", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
-
-            <Field label="CTA WhatsApp">
-              <input
-                value={data.cta.whatsapp}
-                onChange={(e) => updateSectionField("cta", "whatsapp", e.target.value)}
-                style={styles.input}
-              />
-            </Field>
-          </SectionCard>
-        )}
+        <CtaSection
+          section={sections.cta}
+          updateSection={updateSection}
+          handleUpload={handleUpload}
+        />
       </div>
 
       <div style={styles.footerBar}>
@@ -587,6 +411,233 @@ export default function PageForm({
   )
 }
 
+function HeroSection({ section, updateSection, handleUpload }) {
+  return (
+    <SectionCard title="Hero">
+      <Field label="Title">
+        <input
+          value={section.title}
+          onChange={(e) => updateSection("hero", "title", e.target.value)}
+          style={styles.input}
+        />
+      </Field>
+
+      <Field label="Subtitle">
+        <textarea
+          value={section.subtitle}
+          onChange={(e) => updateSection("hero", "subtitle", e.target.value)}
+          style={styles.textarea}
+        />
+      </Field>
+
+      <ImageField
+        label="Background Image"
+        value={section.backgroundImage}
+        onChange={(value) => updateSection("hero", "backgroundImage", value)}
+        onUpload={(file) =>
+          handleUpload(file, (url) => updateSection("hero", "backgroundImage", url))
+        }
+      />
+
+      <Field label="CTA Button Text">
+        <input
+          value={section.ctaText}
+          onChange={(e) => updateSection("hero", "ctaText", e.target.value)}
+          style={styles.input}
+        />
+      </Field>
+
+      <Field label="WhatsApp Message">
+        <textarea
+          value={section.whatsappMessage}
+          onChange={(e) => updateSection("hero", "whatsappMessage", e.target.value)}
+          style={styles.textarea}
+        />
+      </Field>
+    </SectionCard>
+  )
+}
+
+function ConversionSection({ section, updateSection, handleUpload }) {
+  return (
+    <SectionCard title="Conversion Gap">
+      <Field label="Title">
+        <input
+          value={section.title}
+          onChange={(e) => updateSection("conversion", "title", e.target.value)}
+          style={styles.input}
+        />
+      </Field>
+
+      <Field label="Subtitle">
+        <textarea
+          value={section.subtitle}
+          onChange={(e) => updateSection("conversion", "subtitle", e.target.value)}
+          style={styles.textarea}
+        />
+      </Field>
+
+      <ImageField
+        label="Content Image"
+        value={section.image}
+        onChange={(value) => updateSection("conversion", "image", value)}
+        onUpload={(file) =>
+          handleUpload(file, (url) => updateSection("conversion", "image", url))
+        }
+      />
+    </SectionCard>
+  )
+}
+
+function CtaSection({ section, updateSection, handleUpload }) {
+  return (
+    <SectionCard title="Final CTA">
+      <Field label="Title">
+        <input
+          value={section.title}
+          onChange={(e) => updateSection("cta", "title", e.target.value)}
+          style={styles.input}
+        />
+      </Field>
+
+      <Field label="Subtitle">
+        <textarea
+          value={section.subtitle}
+          onChange={(e) => updateSection("cta", "subtitle", e.target.value)}
+          style={styles.textarea}
+        />
+      </Field>
+
+      <ImageField
+        label="Background Image"
+        value={section.backgroundImage}
+        onChange={(value) => updateSection("cta", "backgroundImage", value)}
+        onUpload={(file) =>
+          handleUpload(file, (url) => updateSection("cta", "backgroundImage", url))
+        }
+      />
+
+      <Field label="Button Text">
+        <input
+          value={section.buttonText}
+          onChange={(e) => updateSection("cta", "buttonText", e.target.value)}
+          style={styles.input}
+        />
+      </Field>
+
+      <Field label="WhatsApp Message">
+        <textarea
+          value={section.whatsappMessage}
+          onChange={(e) => updateSection("cta", "whatsappMessage", e.target.value)}
+          style={styles.textarea}
+        />
+      </Field>
+    </SectionCard>
+  )
+}
+
+function ListSection({
+  title,
+  sectionKey,
+  section,
+  itemTemplate,
+  updateSection,
+  updateItem,
+  addItem,
+  removeItem,
+  handleUpload,
+  fields,
+}) {
+  return (
+    <SectionCard title={title}>
+      <Field label="Section Title">
+        <input
+          value={section.title}
+          onChange={(e) => updateSection(sectionKey, "title", e.target.value)}
+          style={styles.input}
+        />
+      </Field>
+
+      <Field label="Section Subtitle">
+        <textarea
+          value={section.subtitle}
+          onChange={(e) => updateSection(sectionKey, "subtitle", e.target.value)}
+          style={styles.textarea}
+        />
+      </Field>
+
+      <ImageField
+        label="Section Background Image"
+        value={section.backgroundImage || ""}
+        onChange={(value) => updateSection(sectionKey, "backgroundImage", value)}
+        onUpload={(file) =>
+          handleUpload(file, (url) => updateSection(sectionKey, "backgroundImage", url))
+        }
+      />
+
+      {(section.items || []).map((item, index) => (
+        <div key={index} style={styles.subCard}>
+          <div style={styles.subCardHeader}>
+            <p style={styles.subCardTitle}>Item {index + 1}</p>
+            <button
+              type="button"
+              onClick={() => removeItem(sectionKey, index)}
+              style={styles.deleteButton}
+            >
+              Delete
+            </button>
+          </div>
+
+          {fields.map((field) => {
+            if (field === "image") {
+              return (
+                <ImageField
+                  key={field}
+                  label="Image"
+                  value={item.image || ""}
+                  onChange={(value) => updateItem(sectionKey, index, "image", value)}
+                  onUpload={(file) =>
+                    handleUpload(file, (url) => updateItem(sectionKey, index, "image", url))
+                  }
+                  compact
+                />
+              )
+            }
+
+            const isLong = ["desc", "text", "a"].includes(field)
+
+            return (
+              <Field key={field} label={field}>
+                {isLong ? (
+                  <textarea
+                    value={item[field] || ""}
+                    onChange={(e) => updateItem(sectionKey, index, field, e.target.value)}
+                    style={styles.textarea}
+                  />
+                ) : (
+                  <input
+                    value={item[field] || ""}
+                    onChange={(e) => updateItem(sectionKey, index, field, e.target.value)}
+                    style={styles.input}
+                  />
+                )}
+              </Field>
+            )
+          })}
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => addItem(sectionKey, itemTemplate)}
+        style={styles.addButton}
+      >
+        + Add Item
+      </button>
+    </SectionCard>
+  )
+}
+
 function Field({ label, children }) {
   return (
     <label style={styles.field}>
@@ -601,7 +652,7 @@ function ImageField({ label, value, onChange, onUpload, compact = false }) {
     <div style={{ ...styles.field, marginBottom: compact ? 10 : 16 }}>
       <span style={styles.label}>{label}</span>
       <input
-        value={value}
+        value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         style={styles.input}
         placeholder="Image URL"
@@ -612,6 +663,9 @@ function ImageField({ label, value, onChange, onUpload, compact = false }) {
         onChange={(e) => onUpload(e.target.files?.[0])}
         style={styles.fileInput}
       />
+      {value ? (
+        <img src={value} alt="" style={styles.previewImage} />
+      ) : null}
     </div>
   )
 }
@@ -630,9 +684,11 @@ const styles = {
     padding: 24,
     display: "grid",
     gap: 20,
+    background: "#f6f7fb",
+    minHeight: "100vh",
   },
   headerCard: {
-    background: "linear-gradient(135deg, #151515 0%, #262f45 100%)",
+    background: "linear-gradient(135deg, #111827 0%, #1e293b 100%)",
     color: "white",
     borderRadius: 24,
     padding: 24,
@@ -673,40 +729,9 @@ const styles = {
   slugValue: {
     fontWeight: 700,
   },
-  packageGuide: {
-    background: "white",
-    borderRadius: 22,
-    padding: 20,
-    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-    flexWrap: "wrap",
-  },
-  packageGuideText: {
-    display: "grid",
-    gap: 6,
-  },
-  packageGuideMini: {
-    margin: 0,
-    fontSize: 12,
-    color: "#667085",
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
-  },
-  packageGuideTitle: {
-    margin: 0,
-    fontSize: 24,
-    textTransform: "capitalize",
-  },
-  packageGuideDesc: {
-    margin: 0,
-    color: "#475467",
-  },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
     gap: 18,
   },
   card: {
@@ -729,6 +754,7 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
     color: "#344054",
+    textTransform: "capitalize",
   },
   input: {
     width: "100%",
@@ -736,27 +762,27 @@ const styles = {
     borderRadius: 14,
     border: "1px solid #d0d5dd",
     outline: "none",
+    boxSizing: "border-box",
+  },
+  textarea: {
+    width: "100%",
+    minHeight: 88,
+    padding: "12px 14px",
+    borderRadius: 14,
+    border: "1px solid #d0d5dd",
+    outline: "none",
+    resize: "vertical",
+    boxSizing: "border-box",
   },
   fileInput: {
     fontSize: 13,
   },
-  planRow: {
-    display: "flex",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-  planButton: {
-    padding: "10px 16px",
-    borderRadius: 999,
-    border: "1px solid #d0d5dd",
-    background: "#fff",
-    cursor: "pointer",
-    textTransform: "capitalize",
-  },
-  planButtonActive: {
-    background: "#111827",
-    color: "white",
-    border: "1px solid #111827",
+  previewImage: {
+    width: "100%",
+    maxHeight: 180,
+    objectFit: "cover",
+    borderRadius: 14,
+    border: "1px solid #eee",
   },
   subCard: {
     border: "1px solid #eaecf0",
@@ -765,8 +791,33 @@ const styles = {
     marginBottom: 12,
     background: "#fafafa",
   },
+  subCardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
   subCardTitle: {
-    margin: "0 0 12px",
+    margin: 0,
+    fontWeight: 700,
+  },
+  addButton: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: 14,
+    border: "1px dashed #94a3b8",
+    background: "#f8fafc",
+    cursor: "pointer",
+    fontWeight: 700,
+  },
+  deleteButton: {
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: "none",
+    background: "#fee2e2",
+    color: "#991b1b",
+    cursor: "pointer",
     fontWeight: 700,
   },
   footerBar: {

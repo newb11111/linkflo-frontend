@@ -4,13 +4,8 @@ import { useState } from "react"
 
 function normalizeWhatsapp(phone = "") {
   let cleaned = String(phone).replace(/\D/g, "")
-
   if (!cleaned) return ""
-
-  if (cleaned.startsWith("0")) {
-    cleaned = `6${cleaned}`
-  }
-
+  if (cleaned.startsWith("0")) cleaned = `6${cleaned}`
   return cleaned
 }
 
@@ -18,24 +13,13 @@ function buildWhatsappLink(data = {}) {
   const phone = normalizeWhatsapp(data?.whatsapp || "")
   if (!phone) return "#"
 
-  const customMessage = (data?.cta?.whatsapp || "").trim()
-  const brandName = (data?.brandName || "").trim()
-  const heroTitle = (data?.hero?.title || "").trim()
+  const sections = data?.sections || {}
+  const message =
+    sections?.cta?.whatsappMessage ||
+    sections?.hero?.whatsappMessage ||
+    `Hi，我想了解 ${data?.brandName || "你的服务"}`
 
-  let message = customMessage
-
-  if (!message) {
-    if (brandName) {
-      message = `Hi，我想了解 ${brandName}`
-    } else if (heroTitle) {
-      message = `Hi，我想了解 ${heroTitle}`
-    } else {
-      message = "Hi，我想了解更多"
-    }
-  }
-
-  const encodedMessage = encodeURIComponent(message)
-  return `https://wa.me/${phone}?text=${encodedMessage}`
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
 }
 
 function getYoutubeEmbedUrl(url = "") {
@@ -55,9 +39,7 @@ function getYoutubeEmbedUrl(url = "") {
         return id ? `https://www.youtube.com/embed/${id}` : ""
       }
 
-      if (parsed.pathname.startsWith("/embed/")) {
-        return url
-      }
+      if (parsed.pathname.startsWith("/embed/")) return url
     }
 
     return ""
@@ -66,17 +48,41 @@ function getYoutubeEmbedUrl(url = "") {
   }
 }
 
-function BgSection({
-  image,
-  overlay = "bg-black/45",
-  minHeight = "min-h-[420px]",
-  rounded = "rounded-[32px]",
-  children,
-  className = "",
-}) {
+function hasItems(section) {
+  return Array.isArray(section?.items) && section.items.length > 0
+}
+
+function SectionHeader({ label, title, subtitle, align = "center" }) {
+  if (!title && !subtitle) return null
+  const center = align === "center"
+
+  return (
+    <div className={center ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
+      {label ? (
+        <p className="text-xs font-black uppercase tracking-[0.3em] text-blue-700/70">
+          {label}
+        </p>
+      ) : null}
+
+      {title ? (
+        <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+          {title}
+        </h2>
+      ) : null}
+
+      {subtitle ? (
+        <p className="mt-5 text-base leading-8 text-slate-600 sm:text-lg">
+          {subtitle}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function BgBlock({ image, children, className = "" }) {
   return (
     <div
-      className={`relative overflow-hidden ${rounded} ${minHeight} ${className}`}
+      className={`relative overflow-hidden rounded-[40px] bg-slate-950 ${className}`}
       style={
         image
           ? {
@@ -87,8 +93,45 @@ function BgSection({
           : undefined
       }
     >
-      <div className={`absolute inset-0 ${image ? overlay : "bg-slate-900"}`} />
+      <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/65 to-black/30" />
       <div className="relative z-10">{children}</div>
+    </div>
+  )
+}
+
+function SoftBackground({ image }) {
+  if (!image) return null
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 opacity-[0.06]"
+      style={{
+        backgroundImage: `url(${image})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    />
+  )
+}
+
+function YoutubeBox({ url, title }) {
+  const embed = getYoutubeEmbedUrl(url)
+
+  return (
+    <div className="aspect-video overflow-hidden rounded-[34px] bg-white shadow-xl ring-1 ring-black/5">
+      {embed ? (
+        <iframe
+          className="h-full w-full"
+          src={embed}
+          title={title || "Video"}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-sm text-slate-500">
+          视频链接错误（请填 YouTube 链接）
+        </div>
+      )}
     </div>
   )
 }
@@ -96,444 +139,492 @@ function BgSection({
 export default function LandingPage({ data = {} }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const isStarter = data.packageType === "starter"
-  const isPro = data.packageType === "pro"
-  const isProPlus = data.packageType === "proplus"
+  const sections = data?.sections || {}
 
-  const painPoints = Array.isArray(data?.pain?.points)
-    ? data.pain.points.filter(Boolean)
-    : []
-
-  const menuItems = Array.isArray(data?.menu)
-    ? data.menu.filter(
-        (item) => item?.name || item?.image || item?.price || item?.desc
-      )
-    : []
-
-  const reviewItems = Array.isArray(data?.reviews?.items)
-    ? data.reviews.items.filter((item) => item?.image || item?.text || item?.name)
-    : []
-
-  const videos = Array.isArray(data?.videos)
-    ? data.videos.filter((item) => item?.url)
-    : []
+  const hero = sections.hero || {}
+  const problem = sections.problem || {}
+  const conversion = sections.conversion || {}
+  const solution = sections.solution || {}
+  const process = sections.process || {}
+  const showcase = sections.showcase || {}
+  const reviews = sections.reviews || {}
+  const offer = sections.offer || {}
+  const faq = sections.faq || {}
+  const cta = sections.cta || {}
 
   const whatsappLink = buildWhatsappLink(data)
   const hasWhatsapp = whatsappLink !== "#"
-  const ctaButtonText = data?.cta?.buttonText || "立即咨询"
+
+  const ctaText =
+    hero.ctaText || cta.buttonText || "WhatsApp 咨询"
+
+  const navItems = [
+    ["problem", "Problem"],
+    ["conversion", "Gap"],
+    ["solution", "Solution"],
+    ["process", "Process"],
+    ["showcase", "Showcase"],
+    ["reviews", "Reviews"],
+    ["offer", "Offer"],
+    ["faq", "FAQ"],
+  ]
 
   return (
     <div className="min-h-screen bg-[#f7f4ee] text-slate-800">
-      <h1 style={{color: "red"}}>TEST 24 APR</h1>
-      {isProPlus ? (
-        <>
-          <header className="fixed inset-x-0 top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">
-            <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-              <div className="text-lg font-bold sm:text-xl">
-                {data.brandName || "BRAND"}
-              </div>
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
+          <div className="text-lg font-black text-slate-950">
+            {data.brandName || "BRAND"}
+          </div>
 
-              <nav className="hidden items-center gap-6 text-sm md:flex">
-                <a href="#pain" className="hover:opacity-70">
-                  Problem
-                </a>
-                <a href="#video" className="hover:opacity-70">
-                  Video
-                </a>
-                <a href="#reviews" className="hover:opacity-70">
-                  Reviews
-                </a>
-                <a href="#menu" className="hover:opacity-70">
-                  Menu
-                </a>
-                <a href="#order" className="hover:opacity-70">
-                  Order
-                </a>
-              </nav>
+          <nav className="hidden gap-7 text-sm font-semibold text-slate-600 md:flex">
+            {navItems.map(([id, name]) => (
+              <a key={id} href={`#${id}`} className="hover:text-slate-950">
+                {name}
+              </a>
+            ))}
+          </nav>
 
-              <button
-                className="text-2xl md:hidden"
-                onClick={() => setMenuOpen(true)}
-              >
-                ☰
-              </button>
-            </div>
-          </header>
-
-          {menuOpen ? (
-            <div
-              className="fixed inset-0 z-50 bg-black/40 md:hidden"
-              onClick={() => setMenuOpen(false)}
+          {hasWhatsapp ? (
+            <a
+              href={whatsappLink}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white md:block"
             >
-              <div
-                className="absolute right-0 top-0 h-full w-72 bg-white p-6 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="mb-6 flex items-center justify-between">
-                  <strong>{data.brandName || "BRAND"}</strong>
-                  <button onClick={() => setMenuOpen(false)}>✕</button>
-                </div>
-
-                <div className="grid gap-4 text-sm">
-                  <a href="#pain" onClick={() => setMenuOpen(false)}>
-                    Problem
-                  </a>
-                  <a href="#video" onClick={() => setMenuOpen(false)}>
-                    Video
-                  </a>
-                  <a href="#reviews" onClick={() => setMenuOpen(false)}>
-                    Reviews
-                  </a>
-                  <a href="#menu" onClick={() => setMenuOpen(false)}>
-                    Menu
-                  </a>
-                  <a href="#order" onClick={() => setMenuOpen(false)}>
-                    Order
-                  </a>
-                </div>
-              </div>
-            </div>
+              {ctaText}
+            </a>
           ) : null}
-        </>
+
+          <button className="text-2xl md:hidden" onClick={() => setMenuOpen(true)}>
+            ☰
+          </button>
+        </div>
+      </header>
+
+      {menuOpen ? (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 md:hidden"
+          onClick={() => setMenuOpen(false)}
+        >
+          <div
+            className="absolute right-0 top-0 h-full w-72 bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-8 flex justify-between">
+              <strong>{data.brandName || "BRAND"}</strong>
+              <button onClick={() => setMenuOpen(false)}>✕</button>
+            </div>
+
+            <div className="grid gap-5 text-sm font-semibold">
+              {navItems.map(([id, name]) => (
+                <a key={id} href={`#${id}`} onClick={() => setMenuOpen(false)}>
+                  {name}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
       ) : null}
 
-      {(data?.hero?.title || data?.hero?.subtitle || data?.hero?.image) ? (
-        <section
-          className={`relative overflow-hidden px-4 sm:px-6 ${
-            isProPlus ? "pt-28" : "pt-8"
-          }`}
-        >
-          <div className="mx-auto w-full max-w-6xl">
-            <BgSection
-              image={data?.hero?.image}
-              overlay="bg-gradient-to-br from-black/75 via-black/55 to-black/35"
-              minHeight="min-h-[540px] sm:min-h-[620px]"
-              rounded="rounded-[36px]"
-            >
-              <div className="flex min-h-[540px] flex-col items-center justify-center px-6 py-16 text-center text-white sm:min-h-[620px] sm:px-10">
-                <p className="mb-3 text-xs uppercase tracking-[0.35em] text-white/70 sm:text-sm">
-                  Landing Page
+      {/* HERO */}
+      <section className="px-4 pt-28 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <BgBlock image={hero.backgroundImage} className="min-h-[620px]">
+            <div className="flex min-h-[620px] flex-col justify-end px-6 pb-12 pt-24 text-white sm:px-12 lg:px-16 lg:pb-16">
+              <div className="max-w-4xl">
+                <p className="mb-4 text-xs font-black uppercase tracking-[0.36em] text-white/70">
+                  Conversion Landing Page
                 </p>
 
-                <h1 className="max-w-4xl text-3xl font-black leading-tight sm:text-5xl md:text-6xl">
-                  {data.hero?.title}
+                <h1 className="text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
+                  {hero.title || "流量有了，不代表成交会自动发生"}
                 </h1>
 
-                {data.hero?.subtitle ? (
-                  <p className="mt-5 max-w-2xl text-base leading-7 text-white/80 sm:text-lg">
-                    {data.hero.subtitle}
-                  </p>
-                ) : null}
+                <p className="mt-6 max-w-2xl text-base leading-8 text-white/80 sm:text-xl">
+                  {hero.subtitle ||
+                    "你缺的不是更多流量，而是一个能把客户接住、说服、推动咨询的成交页面。"}
+                </p>
 
-                <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row">
-                  {hasWhatsapp ? (
-                    <a href={whatsappLink} target="_blank" rel="noreferrer">
-                      <button className="rounded-full bg-white px-8 py-4 font-semibold text-slate-900 transition hover:opacity-90">
-                        {ctaButtonText}
-                      </button>
-                    </a>
-                  ) : (
-                    <button
-                      className="rounded-full bg-white/40 px-8 py-4 font-semibold text-white cursor-not-allowed"
-                      disabled
-                    >
-                      请先填写 WhatsApp
+                {hasWhatsapp ? (
+                  <a href={whatsappLink} target="_blank" rel="noreferrer">
+                    <button className="mt-9 rounded-full bg-white px-9 py-4 font-black text-slate-950 shadow-xl transition hover:scale-[1.02]">
+                      {ctaText}
                     </button>
-                  )}
-
-                  {data?.brandName ? (
-                    <div className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm text-white/80 backdrop-blur">
-                      {data.brandName}
-                    </div>
-                  ) : null}
-                </div>
+                  </a>
+                ) : null}
               </div>
-            </BgSection>
-          </div>
-        </section>
-      ) : null}
-
-      {(painPoints.length ||
-        data?.pain?.title ||
-        data?.pain?.subtitle ||
-        data?.pain?.image) ? (
-        <section id="pain" className="px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-center">
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-500 sm:text-sm">
-              Problem
-            </p>
-
-            <h2 className="mt-3 max-w-2xl text-center text-2xl font-bold sm:text-4xl">
-              {data?.pain?.title || "你现在遇到的问题"}
-            </h2>
-
-            {data?.pain?.subtitle ? (
-              <p className="mt-4 max-w-2xl text-center text-base leading-7 text-slate-600">
-                {data.pain.subtitle}
-              </p>
-            ) : null}
-
-            <div className="mt-10 grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-              {data?.pain?.image ? (
-                <BgSection
-                  image={data.pain.image}
-                  overlay="bg-black/35"
-                  minHeight="min-h-[320px] sm:min-h-[420px]"
-                  rounded="rounded-[32px]"
-                >
-                  <div className="flex min-h-[320px] items-end p-6 text-white sm:min-h-[420px] sm:p-8">
-                    <div className="max-w-lg">
-                      <p className="text-sm uppercase tracking-[0.24em] text-white/70">
-                        Why people don’t convert
-                      </p>
-                      <h3 className="mt-3 text-2xl font-bold sm:text-3xl">
-                        流量有了，不代表成交会自动发生
-                      </h3>
-                    </div>
-                  </div>
-                </BgSection>
-              ) : (
-                <div className="rounded-[32px] bg-slate-900 p-8 text-white shadow-xl">
-                  <p className="text-sm uppercase tracking-[0.24em] text-white/70">
-                    Why people don’t convert
-                  </p>
-                  <h3 className="mt-3 text-2xl font-bold sm:text-3xl">
-                    流量有了，不代表成交会自动发生
-                  </h3>
-                </div>
-              )}
-
-              {painPoints.length ? (
-                <div className="grid gap-4">
-                  {painPoints.map((point, index) => (
-                    <div
-                      key={index}
-                      className="rounded-[24px] bg-white px-5 py-5 text-left shadow-sm sm:px-6"
-                    >
-                      <div className="mb-2 text-xs uppercase tracking-[0.22em] text-slate-400">
-                        Point {String(index + 1).padStart(2, "0")}
-                      </div>
-                      <div className="text-base leading-7 text-slate-700">
-                        {point}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
             </div>
-          </div>
-        </section>
-      ) : null}
+          </BgBlock>
+        </div>
+      </section>
 
-      {isProPlus && videos.length ? (
-        <section id="video" className="px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center">
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-500 sm:text-sm">
-              Video
-            </p>
+      {/* PROBLEM */}
+      <section id="problem" className="relative px-4 py-24 sm:px-6">
+        <SoftBackground image={problem.backgroundImage} />
 
-            <h2 className="mt-3 max-w-2xl text-2xl font-bold sm:text-4xl">
-              {data.videoTitle || "真实效果展示"}
-            </h2>
+        <div className="relative mx-auto max-w-7xl">
+          <SectionHeader
+            label="Problem"
+            title={problem.title || "为什么你有流量，却没有成交？"}
+            subtitle={
+              problem.subtitle ||
+              "很多生意不是输在流量，而是输在客户点进来之后，没有被马上说服。"
+            }
+          />
 
-            <div className="mt-10 grid w-full gap-6">
-              {videos.map((video, index) => {
-                const embedUrl = getYoutubeEmbedUrl(video.url)
-
-                return (
-                  <div
-                    key={index}
-                    className="aspect-video overflow-hidden rounded-[28px] bg-white shadow-xl"
-                  >
-                    {embedUrl ? (
-                      <iframe
-                        className="h-full w-full"
-                        src={embedUrl}
-                        title={`Video ${index + 1}`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                        视频链接错误（请填 YouTube 链接）
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {(isPro || isProPlus) && data?.proImage ? (
-        <section className="px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto w-full max-w-6xl">
-            <BgSection
-              image={data.proImage}
-              overlay="bg-gradient-to-r from-black/65 to-black/25"
-              minHeight="min-h-[380px] sm:min-h-[500px]"
-              rounded="rounded-[36px]"
-            >
-              <div className="flex min-h-[380px] items-end p-6 text-white sm:min-h-[500px] sm:p-10">
-                <div className="max-w-2xl">
-                  <p className="text-xs uppercase tracking-[0.28em] text-white/70 sm:text-sm">
-                    Result
-                  </p>
-                  <h2 className="mt-3 text-2xl font-bold sm:text-4xl">
-                    {data.proImageTitle || "效果展示"}
-                  </h2>
-                </div>
-              </div>
-            </BgSection>
-          </div>
-        </section>
-      ) : null}
-
-      {!isStarter && (reviewItems.length || data?.reviews?.image || data?.reviews?.title) ? (
-        <section id="reviews" className="px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center">
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-500 sm:text-sm">
-              Reviews
-            </p>
-
-            <h2 className="mt-3 max-w-2xl text-2xl font-bold sm:text-4xl">
-              {data?.reviews?.title || "真实反馈"}
-            </h2>
-
-            {data?.reviews?.image ? (
-              <img
-                src={data.reviews.image}
-                alt="Reviews"
-                className="mt-10 w-full max-w-3xl rounded-[28px] shadow-xl"
-              />
-            ) : null}
-
-            {reviewItems.length ? (
-              <div className="mt-10 grid w-full gap-6 md:grid-cols-2">
-                {reviewItems.map((item, index) => (
-                  <div
-                    key={index}
-                    className="overflow-hidden rounded-[28px] bg-white text-left shadow-lg"
-                  >
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt={item.name || `Review ${index + 1}`}
-                        className="h-64 w-full object-cover"
-                      />
-                    ) : null}
-
-                    <div className="p-6">
-                      {item.text ? (
-                        <p className="text-sm leading-7 text-slate-600 sm:text-base">
-                          {item.text}
-                        </p>
-                      ) : null}
-
-                      {item.name ? (
-                        <p className="mt-4 font-semibold">{item.name}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {menuItems.length ? (
-        <section id="menu" className="px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center">
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-500 sm:text-sm">
-              Offers
-            </p>
-
-            <div className="mb-8 mt-3">
-              <h2 className="text-2xl font-bold sm:text-4xl">
-                {data.menuTitle || "热门选择"}
-              </h2>
-            </div>
-
-            <div className="grid w-full gap-6">
-              {menuItems.map((item, index) => (
+          {hasItems(problem) ? (
+            <div className="mt-12 grid gap-6 md:grid-cols-3">
+              {problem.items.map((item, index) => (
                 <div
                   key={index}
-                  className="rounded-[28px] bg-white p-5 text-left shadow-lg sm:p-6"
+                  className="rounded-[32px] bg-white p-7 shadow-sm ring-1 ring-black/5"
                 >
                   {item.image ? (
                     <img
                       src={item.image}
-                      alt={item.name || `Menu ${index + 1}`}
-                      className="mb-5 h-auto max-h-[420px] w-full rounded-[22px] object-cover"
+                      alt={item.title || ""}
+                      className="mb-6 h-48 w-full rounded-[24px] object-cover"
                     />
                   ) : null}
 
-                  {item.name ? (
-                    <h3 className="text-lg font-bold sm:text-xl">{item.name}</h3>
-                  ) : null}
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-white">
+                    {String(index + 1).padStart(2, "0")}
+                  </div>
 
-                  {item.desc ? (
-                    <p className="mt-2 text-sm leading-7 text-slate-500 sm:text-base">
-                      {item.desc}
-                    </p>
-                  ) : null}
+                  <h3 className="text-xl font-black text-slate-950">
+                    {item.title}
+                  </h3>
 
-                  {item.price ? (
-                    <p className="mt-4 text-lg font-semibold">{item.price}</p>
-                  ) : null}
+                  <p className="mt-3 leading-8 text-slate-600">{item.desc}</p>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-      ) : null}
+          ) : null}
+        </div>
+      </section>
 
-      <section id="order" className="px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto w-full max-w-6xl">
-          <BgSection
-            image={data?.hero?.image || data?.proImage || ""}
-            overlay="bg-gradient-to-br from-black/80 via-black/60 to-black/45"
-            minHeight="min-h-[320px] sm:min-h-[420px]"
-            rounded="rounded-[36px]"
+      {/* CONVERSION GAP */}
+      <section id="conversion" className="px-4 py-16 sm:px-6">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-2">
+          {conversion.image ? (
+            <img
+              src={conversion.image}
+              alt={conversion.title || "Conversion Gap"}
+              className="h-full max-h-[520px] w-full rounded-[36px] object-cover shadow-xl"
+            />
+          ) : (
+            <div className="min-h-[360px] rounded-[36px] bg-slate-200" />
+          )}
+
+          <div className="rounded-[36px] bg-slate-950 p-8 text-white sm:p-12">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-blue-200/80">
+              Conversion Gap
+            </p>
+
+            <h2 className="mt-4 text-3xl font-black leading-tight sm:text-5xl">
+              {conversion.title || "问题不是没人看，是看完没有下一步"}
+            </h2>
+
+            <p className="mt-6 text-base leading-8 text-white/70 sm:text-lg">
+              {conversion.subtitle ||
+                "客户点进来只有几秒钟判断你值不值得相信。页面没有讲清楚价值、证明和行动路径，流量就会白白流走。"}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* SOLUTION */}
+      <section id="solution" className="relative px-4 py-24 sm:px-6">
+        <SoftBackground image={solution.backgroundImage} />
+
+        <div className="relative mx-auto max-w-7xl">
+          <SectionHeader
+            label="Solution"
+            title={solution.title || "成交页面帮你把流量接住"}
+            subtitle={
+              solution.subtitle ||
+              "不是单纯漂亮，而是把客户需要看的内容，排成一条成交路径。"
+            }
+          />
+
+          {hasItems(solution) ? (
+            <div className="mt-12 grid gap-6 md:grid-cols-3">
+              {solution.items.map((item, index) => (
+                <div
+                  key={index}
+                  className="rounded-[32px] bg-white p-8 shadow-sm ring-1 ring-black/5"
+                >
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.title || ""}
+                      className="mb-6 h-44 w-full rounded-[24px] object-cover"
+                    />
+                  ) : null}
+
+                  <p className="text-sm font-black text-blue-700">
+                    0{index + 1}
+                  </p>
+
+                  <h3 className="mt-5 text-2xl font-black text-slate-950">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-4 leading-8 text-slate-600">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* PROCESS */}
+      <section id="process" className="relative bg-white px-4 py-24 sm:px-6">
+        <SoftBackground image={process.backgroundImage} />
+
+        <div className="relative mx-auto max-w-7xl">
+          <SectionHeader
+            label="Process"
+            title={process.title || "简单流程，快速上线"}
+            subtitle={process.subtitle || "资料进来，页面就可以被系统化生产。"}
+          />
+
+          {hasItems(process) ? (
+            <div className="mt-12 grid gap-6 md:grid-cols-3">
+              {process.items.map((item, index) => (
+                <div key={index} className="rounded-[32px] bg-[#f7f4ee] p-8">
+                  <div className="mb-8 text-6xl font-black text-slate-200">
+                    {index + 1}
+                  </div>
+
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.title || ""}
+                      className="mb-6 h-44 w-full rounded-[24px] object-cover"
+                    />
+                  ) : null}
+
+                  <h3 className="text-2xl font-black text-slate-950">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-4 leading-8 text-slate-600">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* SHOWCASE */}
+      <section id="showcase" className="relative px-4 py-24 sm:px-6">
+        <SoftBackground image={showcase.backgroundImage} />
+
+        <div className="relative mx-auto max-w-7xl">
+          <SectionHeader
+            label="Showcase"
+            title={showcase.title || "页面展示 / Demo"}
+            subtitle={showcase.subtitle || "这里放页面截图、产品图、服务图、demo video。"}
+          />
+
+          {hasItems(showcase) ? (
+            <div className="mt-12 grid gap-6 md:grid-cols-2">
+              {showcase.items.map((item, index) => {
+                const isVideo = item.videoUrl || item.youtubeUrl || item.url
+                const videoUrl = item.videoUrl || item.youtubeUrl || item.url
+
+                return (
+                  <div
+                    key={index}
+                    className="overflow-hidden rounded-[34px] bg-white shadow-sm ring-1 ring-black/5"
+                  >
+                    {isVideo ? (
+                      <YoutubeBox url={videoUrl} title={item.title} />
+                    ) : item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.title || ""}
+                        className="h-80 w-full object-cover"
+                      />
+                    ) : null}
+
+                    {(item.title || item.desc) ? (
+                      <div className="p-7">
+                        {item.title ? (
+                          <h3 className="text-xl font-black text-slate-950">
+                            {item.title}
+                          </h3>
+                        ) : null}
+
+                        {item.desc ? (
+                          <p className="mt-3 leading-8 text-slate-600">
+                            {item.desc}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* REVIEWS */}
+      <section id="reviews" className="relative bg-white px-4 py-24 sm:px-6">
+        <SoftBackground image={reviews.backgroundImage} />
+
+        <div className="relative mx-auto max-w-7xl">
+          <SectionHeader
+            label="Reviews"
+            title={reviews.title || "真实反馈 / 信任证明"}
+            subtitle={reviews.subtitle || "这里重点是证明，截图和评价比长篇解释更有力。"}
+          />
+
+          {hasItems(reviews) ? (
+            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {reviews.items.map((item, index) => (
+                <div
+                  key={index}
+                  className="overflow-hidden rounded-[32px] bg-[#f7f4ee] shadow-sm ring-1 ring-black/5"
+                >
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name || ""}
+                      className="h-72 w-full object-cover"
+                    />
+                  ) : null}
+
+                  <div className="p-7">
+                    {item.text ? (
+                      <p className="leading-8 text-slate-700">{item.text}</p>
+                    ) : null}
+
+                    {item.name ? (
+                      <p className="mt-5 font-black text-slate-950">
+                        {item.name}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* OFFER */}
+      <section id="offer" className="relative px-4 py-24 sm:px-6">
+        <SoftBackground image={offer.backgroundImage} />
+
+        <div className="relative mx-auto max-w-7xl">
+          <SectionHeader
+            label="Offer"
+            title={offer.title || "配套 / Offer"}
+            subtitle={offer.subtitle || "这里用卡片呈现价格、服务内容和产品图。"}
+          />
+
+          {hasItems(offer) ? (
+            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {offer.items.map((item, index) => (
+                <div
+                  key={index}
+                  className="overflow-hidden rounded-[34px] bg-white shadow-sm ring-1 ring-black/5"
+                >
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name || item.title || ""}
+                      className="h-72 w-full object-cover"
+                    />
+                  ) : null}
+
+                  <div className="p-7">
+                    <h3 className="text-2xl font-black text-slate-950">
+                      {item.name || item.title}
+                    </h3>
+
+                    {item.desc ? (
+                      <p className="mt-4 leading-8 text-slate-600">
+                        {item.desc}
+                      </p>
+                    ) : null}
+
+                    {item.price ? (
+                      <p className="mt-6 text-3xl font-black text-slate-950">
+                        {item.price}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="relative bg-white px-4 py-24 sm:px-6">
+        <SoftBackground image={faq.backgroundImage} />
+
+        <div className="relative mx-auto max-w-4xl">
+          <SectionHeader
+            label="FAQ"
+            title={faq.title || "常见问题"}
+            subtitle={faq.subtitle || "先处理客户心里的疑问，才更容易让他点击咨询。"}
+          />
+
+          {hasItems(faq) ? (
+            <div className="mt-12 grid gap-4">
+              {faq.items.map((item, index) => (
+                <div key={index} className="rounded-[28px] bg-[#f7f4ee] p-7">
+                  <h3 className="text-lg font-black text-slate-950">
+                    {item.q || item.question}
+                  </h3>
+
+                  <p className="mt-3 leading-8 text-slate-600">
+                    {item.a || item.answer}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section id="order" className="px-4 py-24 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <BgBlock
+            image={cta.backgroundImage || hero.backgroundImage}
+            className="min-h-[460px]"
           >
-            <div className="flex min-h-[320px] flex-col items-center justify-center px-6 py-14 text-center text-white sm:min-h-[420px] sm:px-10">
-              <p className="text-xs uppercase tracking-[0.28em] text-white/65 sm:text-sm">
-                CTA
+            <div className="flex min-h-[460px] flex-col items-center justify-center px-6 py-16 text-center text-white sm:px-10">
+              <p className="text-xs font-black uppercase tracking-[0.32em] text-white/60">
+                Final CTA
               </p>
 
-              <h2 className="mt-3 max-w-2xl text-2xl font-bold sm:text-4xl">
-                {data?.cta?.title || "现在开始提升你的生意"}
+              <h2 className="mt-4 max-w-3xl text-3xl font-black leading-tight sm:text-5xl">
+                {cta.title || "现在开始把你的流量变成咨询和成交"}
               </h2>
 
-              {data?.cta?.subtitle ? (
-                <p className="mt-4 max-w-2xl text-base leading-7 text-white/80">
-                  {data.cta.subtitle}
-                </p>
-              ) : null}
+              <p className="mt-6 max-w-2xl text-base leading-8 text-white/75 sm:text-lg">
+                {cta.subtitle || "如果你已经有流量，下一步就是把流量接住。"}
+              </p>
 
               {hasWhatsapp ? (
-                <a
-                  href={whatsappLink}
-                  className="mt-8 inline-block"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <button className="rounded-full bg-white px-10 py-4 font-semibold text-slate-900 transition hover:opacity-90">
-                    {ctaButtonText}
+                <a href={whatsappLink} target="_blank" rel="noreferrer">
+                  <button className="mt-9 rounded-full bg-white px-10 py-4 font-black text-slate-950 shadow-xl transition hover:scale-[1.02]">
+                    {cta.buttonText || hero.ctaText || "WhatsApp 咨询"}
                   </button>
                 </a>
-              ) : (
-                <button
-                  className="mt-8 rounded-full bg-white/30 px-10 py-4 text-white cursor-not-allowed"
-                  disabled
-                >
-                  请先填写 WhatsApp
-                </button>
-              )}
+              ) : null}
             </div>
-          </BgSection>
+          </BgBlock>
         </div>
       </section>
     </div>

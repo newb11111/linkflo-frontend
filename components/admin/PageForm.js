@@ -23,7 +23,7 @@ const defaultSections = {
   conversion: {
     title: "",
     subtitle: "",
-    image: "",
+    backgroundImage: "",
   },
   solution: {
     title: "",
@@ -74,14 +74,23 @@ function mergeSections(initialData = {}) {
   const sections = initialData.sections || {}
 
   return Object.fromEntries(
-    Object.entries(defaultSections).map(([key, value]) => [
-      key,
-      {
+    Object.entries(defaultSections).map(([key, value]) => {
+      const oldSection = sections[key] || {}
+
+      const fixedSection = {
         ...value,
-        ...(sections[key] || {}),
-        items: sections[key]?.items?.length ? sections[key].items : value.items,
-      },
-    ])
+        ...oldSection,
+        items: oldSection?.items?.length ? oldSection.items : value.items,
+      }
+
+      if (key === "conversion") {
+        fixedSection.backgroundImage =
+          oldSection.backgroundImage || oldSection.image || ""
+        delete fixedSection.image
+      }
+
+      return [key, fixedSection]
+    })
   )
 }
 
@@ -383,7 +392,6 @@ export default function PageForm({
           removeItem={removeItem}
           handleUpload={handleUpload}
           fields={["q", "a"]}
-          noBackgroundImage={false}
         />
 
         <CtaSection
@@ -478,11 +486,11 @@ function ConversionSection({ section, updateSection, handleUpload }) {
       </Field>
 
       <ImageField
-        label="Content Image"
-        value={section.image}
-        onChange={(value) => updateSection("conversion", "image", value)}
+        label="Background Image"
+        value={section.backgroundImage}
+        onChange={(value) => updateSection("conversion", "backgroundImage", value)}
         onUpload={(file) =>
-          handleUpload(file, (url) => updateSection("conversion", "image", url))
+          handleUpload(file, (url) => updateSection("conversion", "backgroundImage", url))
         }
       />
     </SectionCard>
@@ -607,7 +615,7 @@ function ListSection({
             const isLong = ["desc", "text", "a"].includes(field)
 
             return (
-              <Field key={field} label={field}>
+              <Field key={field} label={field === "youtubeUrl" ? "Youtube Url" : field}>
                 {isLong ? (
                   <textarea
                     value={item[field] || ""}
@@ -619,6 +627,7 @@ function ListSection({
                     value={item[field] || ""}
                     onChange={(e) => updateItem(sectionKey, index, field, e.target.value)}
                     style={styles.input}
+                    placeholder={field === "youtubeUrl" ? "Paste YouTube link here" : ""}
                   />
                 )}
               </Field>

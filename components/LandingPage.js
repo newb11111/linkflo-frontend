@@ -32,6 +32,8 @@ function hasSection(section = {}) {
     hasText(section.subtitle) ||
     hasText(section.backgroundImage) ||
     hasText(section.image) ||
+    hasText(section.youtubeUrl) ||
+    hasText(section.videoUrl) ||
     hasText(section.ctaText) ||
     hasText(section.buttonText) ||
     hasText(section.whatsappMessage) ||
@@ -66,6 +68,11 @@ function getYoutubeEmbedUrl(url = "") {
     if (parsed.hostname.includes("youtube.com")) {
       if (parsed.pathname === "/watch") {
         const id = parsed.searchParams.get("v")
+        return id ? `https://www.youtube.com/embed/${id}` : ""
+      }
+
+      if (parsed.pathname.startsWith("/shorts/")) {
+        const id = parsed.pathname.replace("/shorts/", "")
         return id ? `https://www.youtube.com/embed/${id}` : ""
       }
 
@@ -119,7 +126,7 @@ function BgBlock({ image, children, className = "" }) {
           : undefined
       }
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/65 to-black/30" />
+      <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/65 to-black/35" />
       <div className="relative z-10">{children}</div>
     </div>
   )
@@ -129,14 +136,17 @@ function SoftBackground({ image }) {
   if (!hasText(image)) return null
 
   return (
-    <div
-      className="pointer-events-none absolute inset-0 opacity-[0.06]"
-      style={{
-        backgroundImage: `url(${image})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    />
+    <>
+      <div
+        className="pointer-events-none absolute inset-0 scale-105 opacity-[0.22] blur-[2px]"
+        style={{
+          backgroundImage: `url(${image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[#f7f4ee]/65" />
+    </>
   )
 }
 
@@ -305,7 +315,7 @@ export default function LandingPage({ data = {} }) {
       ) : null}
 
       {hasSection(problem) ? (
-        <section id="problem" className="relative px-4 py-24 sm:px-6">
+        <section id="problem" className="relative overflow-hidden px-4 py-24 sm:px-6">
           <SoftBackground image={problem.backgroundImage} />
 
           <div className="relative mx-auto max-w-7xl">
@@ -320,7 +330,7 @@ export default function LandingPage({ data = {} }) {
                 {problemItems.map((item, index) => (
                   <div
                     key={index}
-                    className="rounded-[32px] bg-white p-7 shadow-sm ring-1 ring-black/5"
+                    className="rounded-[32px] bg-white/90 p-7 shadow-sm ring-1 ring-black/5 backdrop-blur"
                   >
                     {hasText(item.image) ? (
                       <img
@@ -353,40 +363,37 @@ export default function LandingPage({ data = {} }) {
 
       {hasSection(conversion) ? (
         <section id="conversion" className="px-4 py-16 sm:px-6">
-          <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-2">
-            {hasText(conversion.image) ? (
-              <img
-                src={conversion.image}
-                alt={conversion.title || "Conversion Gap"}
-                className="h-full max-h-[520px] w-full rounded-[36px] object-cover shadow-xl"
-              />
-            ) : null}
-
-            {(hasText(conversion.title) || hasText(conversion.subtitle)) ? (
-              <div className="rounded-[36px] bg-slate-950 p-8 text-white sm:p-12">
-                <p className="text-xs font-black uppercase tracking-[0.3em] text-blue-200/80">
-                  Conversion Gap
-                </p>
-
-                {hasText(conversion.title) ? (
-                  <h2 className="mt-4 text-3xl font-black leading-tight sm:text-5xl">
-                    {conversion.title}
-                  </h2>
-                ) : null}
-
-                {hasText(conversion.subtitle) ? (
-                  <p className="mt-6 text-base leading-8 text-white/70 sm:text-lg">
-                    {conversion.subtitle}
+          <div className="mx-auto max-w-7xl">
+            <BgBlock
+              image={conversion.backgroundImage || conversion.image}
+              className="min-h-[430px]"
+            >
+              <div className="flex min-h-[430px] flex-col justify-center px-8 py-14 text-white sm:px-12 lg:px-16">
+                <div className="max-w-4xl">
+                  <p className="text-xs font-black uppercase tracking-[0.3em] text-blue-200/80">
+                    Conversion Gap
                   </p>
-                ) : null}
+
+                  {hasText(conversion.title) ? (
+                    <h2 className="mt-4 text-3xl font-black leading-tight sm:text-5xl">
+                      {conversion.title}
+                    </h2>
+                  ) : null}
+
+                  {hasText(conversion.subtitle) ? (
+                    <p className="mt-6 max-w-2xl text-base leading-8 text-white/75 sm:text-lg">
+                      {conversion.subtitle}
+                    </p>
+                  ) : null}
+                </div>
               </div>
-            ) : null}
+            </BgBlock>
           </div>
         </section>
       ) : null}
 
       {hasSection(solution) ? (
-        <section id="solution" className="relative px-4 py-24 sm:px-6">
+        <section id="solution" className="relative overflow-hidden px-4 py-24 sm:px-6">
           <SoftBackground image={solution.backgroundImage} />
 
           <div className="relative mx-auto max-w-7xl">
@@ -401,7 +408,7 @@ export default function LandingPage({ data = {} }) {
                 {solutionItems.map((item, index) => (
                   <div
                     key={index}
-                    className="rounded-[32px] bg-white p-8 shadow-sm ring-1 ring-black/5"
+                    className="rounded-[32px] bg-white/90 p-8 shadow-sm ring-1 ring-black/5 backdrop-blur"
                   >
                     {hasText(item.image) ? (
                       <img
@@ -433,7 +440,7 @@ export default function LandingPage({ data = {} }) {
       ) : null}
 
       {hasSection(process) ? (
-        <section id="process" className="relative bg-white px-4 py-24 sm:px-6">
+        <section id="process" className="relative overflow-hidden bg-white px-4 py-24 sm:px-6">
           <SoftBackground image={process.backgroundImage} />
 
           <div className="relative mx-auto max-w-7xl">
@@ -446,7 +453,7 @@ export default function LandingPage({ data = {} }) {
             {processItems.length > 0 ? (
               <div className="mt-12 grid gap-6 md:grid-cols-3">
                 {processItems.map((item, index) => (
-                  <div key={index} className="rounded-[32px] bg-[#f7f4ee] p-8">
+                  <div key={index} className="rounded-[32px] bg-[#f7f4ee]/90 p-8 backdrop-blur">
                     <div className="mb-8 text-6xl font-black text-slate-200">
                       {index + 1}
                     </div>
@@ -477,7 +484,7 @@ export default function LandingPage({ data = {} }) {
       ) : null}
 
       {hasSection(showcase) ? (
-        <section id="showcase" className="relative px-4 py-24 sm:px-6">
+        <section id="showcase" className="relative overflow-hidden px-4 py-24 sm:px-6">
           <SoftBackground image={showcase.backgroundImage} />
 
           <div className="relative mx-auto max-w-7xl">
@@ -490,13 +497,19 @@ export default function LandingPage({ data = {} }) {
             {showcaseItems.length > 0 ? (
               <div className="mt-12 grid gap-6 md:grid-cols-2">
                 {showcaseItems.map((item, index) => {
-                  const videoUrl = item.videoUrl || item.youtubeUrl || item.url
+                  const videoUrl =
+                    item.youtubeUrl ||
+                    item.videoUrl ||
+                    item.youtube ||
+                    item.url ||
+                    ""
+
                   const isVideo = hasText(videoUrl)
 
                   return (
                     <div
                       key={index}
-                      className="overflow-hidden rounded-[34px] bg-white shadow-sm ring-1 ring-black/5"
+                      className="overflow-hidden rounded-[34px] bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur"
                     >
                       {isVideo ? (
                         <YoutubeBox url={videoUrl} title={item.title} />
@@ -533,7 +546,7 @@ export default function LandingPage({ data = {} }) {
       ) : null}
 
       {hasSection(reviews) ? (
-        <section id="reviews" className="relative bg-white px-4 py-24 sm:px-6">
+        <section id="reviews" className="relative overflow-hidden bg-white px-4 py-24 sm:px-6">
           <SoftBackground image={reviews.backgroundImage} />
 
           <div className="relative mx-auto max-w-7xl">
@@ -548,7 +561,7 @@ export default function LandingPage({ data = {} }) {
                 {reviewItems.map((item, index) => (
                   <div
                     key={index}
-                    className="overflow-hidden rounded-[32px] bg-[#f7f4ee] shadow-sm ring-1 ring-black/5"
+                    className="overflow-hidden rounded-[32px] bg-[#f7f4ee]/90 shadow-sm ring-1 ring-black/5 backdrop-blur"
                   >
                     {hasText(item.image) ? (
                       <img
@@ -578,7 +591,7 @@ export default function LandingPage({ data = {} }) {
       ) : null}
 
       {hasSection(offer) ? (
-        <section id="offer" className="relative px-4 py-24 sm:px-6">
+        <section id="offer" className="relative overflow-hidden px-4 py-24 sm:px-6">
           <SoftBackground image={offer.backgroundImage} />
 
           <div className="relative mx-auto max-w-7xl">
@@ -593,7 +606,7 @@ export default function LandingPage({ data = {} }) {
                 {offerItems.map((item, index) => (
                   <div
                     key={index}
-                    className="overflow-hidden rounded-[34px] bg-white shadow-sm ring-1 ring-black/5"
+                    className="overflow-hidden rounded-[34px] bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur"
                   >
                     {hasText(item.image) ? (
                       <img
@@ -631,7 +644,7 @@ export default function LandingPage({ data = {} }) {
       ) : null}
 
       {hasSection(faq) ? (
-        <section id="faq" className="relative bg-white px-4 py-24 sm:px-6">
+        <section id="faq" className="relative overflow-hidden bg-white px-4 py-24 sm:px-6">
           <SoftBackground image={faq.backgroundImage} />
 
           <div className="relative mx-auto max-w-4xl">
@@ -644,7 +657,7 @@ export default function LandingPage({ data = {} }) {
             {faqItems.length > 0 ? (
               <div className="mt-12 grid gap-4">
                 {faqItems.map((item, index) => (
-                  <div key={index} className="rounded-[28px] bg-[#f7f4ee] p-7">
+                  <div key={index} className="rounded-[28px] bg-[#f7f4ee]/90 p-7 backdrop-blur">
                     {hasText(item.q) || hasText(item.question) ? (
                       <h3 className="text-lg font-black text-slate-950">
                         {item.q || item.question}

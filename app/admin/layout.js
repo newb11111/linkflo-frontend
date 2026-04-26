@@ -9,7 +9,8 @@ const items = [
   { label: "Dashboard", href: "/admin" },
   { label: "Create Page", href: "/admin/orderpage" },
   { label: "Customers", href: "/admin/customers" },
-  { label: "Reports", href: "/admin/reports" }
+  { label: "Reports", href: "/admin/reports" },
+  { label: "Platform", href: "/admin/platform" }
 ]
 
 const IDLE_TIMEOUT = 15 * 60 * 1000 // 15 分钟
@@ -195,7 +196,7 @@ export default function AdminLayout({ children }) {
 
             <div>
               <p style={styles.topLabel}>Workspace</p>
-              <h3 style={styles.topTitle}>Landing Page System</h3>
+              <h3 style={styles.topTitle}>Platform System</h3>
             </div>
           </div>
         </div>

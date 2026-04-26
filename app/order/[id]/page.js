@@ -1,0 +1,7 @@
+"use client"
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
+import { API_URL } from "../../../lib/config"
+import { money } from "../../../lib/platformAuth"
+export default function OrderPage(){const params=useParams();const[order,setOrder]=useState(null);const[error,setError]=useState("");useEffect(()=>{fetch(`${API_URL}/api/orders/${params.id}`).then(r=>r.json().then(d=>{if(!r.ok)throw new Error(d.message||"Order not found");setOrder(d)})).catch(e=>setError(e.message))},[params.id]);if(error)return <div style={s.page}>{error}</div>;if(!order)return <div style={s.page}>Loading...</div>;return <div style={s.page}><div style={s.card}><h1>订单查询</h1><p><b>订单：</b>{order.id}</p><p><b>产品：</b>{order.product?.name}</p><p><b>金额：</b>{money(order.amount)}</p><p><b>付款状态：</b>{order.paymentStatus}</p><p><b>订单状态：</b>{order.status}</p><p><b>物流状态：</b>{order.shippingStatus}</p><p><b>Courier：</b>{order.courier||"等待更新"}</p><p><b>Tracking：</b>{order.trackingNumber||"等待更新"}</p>{order.trackingUrl&&<a href={order.trackingUrl} target="_blank" style={s.btn}>Track Parcel</a>}</div></div>}
+const s={page:{minHeight:"100vh",display:"grid",placeItems:"center",padding:24,fontFamily:"Arial",background:"#f8fafc"},card:{width:"100%",maxWidth:620,background:"white",borderRadius:28,padding:28,boxShadow:"0 20px 50px rgba(15,23,42,.08)"},btn:{display:"block",marginTop:18,background:"#2563eb",color:"white",padding:14,borderRadius:14,textDecoration:"none",fontWeight:800,textAlign:"center"}}

@@ -1,0 +1,3 @@
+"use client"
+import Link from "next/link"
+export default function MarketplaceLocked(){return <main className="min-h-screen bg-[#f4f8ff] px-5 py-16"><div className="mx-auto max-w-3xl rounded-[36px] bg-white p-8 text-center shadow-xl"><h1 className="text-4xl font-black tracking-[-.04em]">Promoter Marketplace 需要登入</h1><p className="mt-4 font-bold leading-7 text-slate-600">可推广产品、佣金比例、商家资料不会公开给大众。只有 approved promoter 登录后才能浏览和复制专属推广链接。</p><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/promoter/login" className="rounded-full bg-blue-700 px-7 py-4 font-black text-white">Promoter Login</Link><Link href="/promoter/apply" className="rounded-full bg-slate-950 px-7 py-4 font-black text-white">申请成为 Promoter</Link></div></div></main>}

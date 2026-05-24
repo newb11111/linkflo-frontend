@@ -1,10 +1,4 @@
-import { redirect } from "next/navigation"
-
-export const dynamic = "force-dynamic"
-
-export default async function LegacySlugRedirect({ params }) {
-  const resolvedParams = await params
-  const slug = resolvedParams?.slug
-  if (!slug) redirect("/")
-  redirect(`/p/${encodeURIComponent(slug)}`)
-}
+'use client'
+import {useEffect,useState} from 'react'
+import {API_URL} from '../../lib/api'
+export default function Funnel({params}){const slug=params.slug;const[ref,setRef]=useState('');const[data,setData]=useState(null);const[err,setErr]=useState('');useEffect(()=>{const sp=new URLSearchParams(window.location.search);const r=sp.get('ref')||'';setRef(r);let visitorKey=localStorage.getItem('lf_visitor');if(!visitorKey){visitorKey=Math.random().toString(36).slice(2);localStorage.setItem('lf_visitor',visitorKey)}fetch(`${API_URL}/api/public/funnel/${slug}${r?`?ref=${encodeURIComponent(r)}`:''}`).then(x=>x.json().then(j=>{if(!x.ok)throw new Error(j.error||'Not found');setData(j)})).catch(e=>setErr(e.message));fetch(`${API_URL}/api/public/click`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug,ref:r,visitorKey})}).catch(()=>{})},[slug]);if(err)return <main className="wrap"><div className="err">{err}</div></main>;if(!data)return <main className="wrap">Loading...</main>;const f=data.product.funnel||{};const wa=String(data.whatsapp||'').replace(/[^0-9]/g,'');return <main className="wrap"><section className="card" style={{padding:36}}><p className="muted">{data.product.brand_name}</p><h1 style={{fontSize:42}}>{f.heroTitle||data.product.name}</h1><p style={{fontSize:20}}>{f.heroSubtitle}</p><a className="btn" href={`https://wa.me/${wa}`} target="_blank">WhatsApp Now</a>{data.promoter&&<p className="muted">Consultant: {data.promoter.name}</p>}</section><section className="grid" style={{gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',marginTop:20}}>{(f.pains||[]).map((x,i)=><div className="card" style={{padding:20}} key={i}><h3>痛点 {i+1}</h3><p>{x}</p></div>)}{(f.benefits||[]).map((x,i)=><div className="card" style={{padding:20}} key={'b'+i}><h3>好处 {i+1}</h3><p>{x}</p></div>)}</section><section className="card" style={{padding:24,marginTop:20}}><h2>FAQ</h2>{(f.faq||[]).map((x,i)=><div key={i}><b>{x.q}</b><p>{x.a}</p></div>)}</section></main>}

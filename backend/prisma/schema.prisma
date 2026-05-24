@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MERCHANT
+}
+
+enum PlanCode {
+  STARTER
+  GROWTH
+  SCALE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role
+  merchant  Merchant?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Merchant {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandName           String
+  whatsapp            String
+  plan                PlanCode  @default(STARTER)
+  planStatus          String    @default("ACTIVE")
+  nextBillingAt       DateTime?
+  lastMonthlyChargeAt DateTime?
+  isHidden            Boolean   @default(false)
+  extraSkuCredits     Int       @default(0)
+  creditBalance       Float     @default(0)
+  products            Product[]
+  links               PromoterLink[]
+  billingTransactions BillingTransaction[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model Product {
+  id             String          @id @default(cuid())
+  merchantId     String
+  merchant       Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String          @unique
+  headline       String
+  subheadline    String?
+  description    String?
+  sop            String?
+  priceNote      String?
+  imageUrl       String?
+  heroImageUrl   String?
+  videoUrl       String?
+  galleryImages  String[]        @default([])
+  translations   Json            @default("{}")
+  isPublished    Boolean         @default(false)
+  isHidden       Boolean         @default(false)
+  sections       FunnelSection[]
+  links          PromoterLink[]
+  events         TrackingEvent[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model FunnelSection {
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type         String
+  title        String
+  body         String
+  position     Int      @default(0)
+  isHidden     Boolean  @default(false)
+  translations Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PromoterLink {
+  id            String          @id @default(cuid())
+  promoterId    String
+  merchantId    String
+  merchant      Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promoterName  String
+  promoterPhone String
+  code          String          @unique
+  isActive      Boolean         @default(true)
+  events        TrackingEvent[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([merchantId, promoterId])
+}
+
+model TrackingEvent {
+  id             String        @id @default(cuid())
+  productId      String
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promoterLinkId String?
+  promoterLink   PromoterLink? @relation(fields: [promoterLinkId], references: [id], onDelete: SetNull)
+  type           String
+  refCode        String?
+  visitorKey     String?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+
+  @@index([productId, promoterLinkId, type, visitorKey, createdAt])
+}
+
+model BillingTransaction {
+  id           String    @id @default(cuid())
+  merchantId   String?
+  merchant     Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  type         String
+  plan         PlanCode?
+  skuCredits   Int       @default(0)
+  creditAmount Float     @default(0)
+  amount       Float     @default(0)
+  status       String    @default("PENDING")
+  billId       String?
+  billUrl      String?
+  rawPayload   Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}

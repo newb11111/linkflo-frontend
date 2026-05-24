@@ -1,37 +1,15 @@
-import { API_URL } from '../../../lib/config'
-import ProductFunnelLux from '../../../components/ProductFunnelLux'
-import DraftProductFunnelClient from './DraftProductFunnelClient'
+import FunnelClient from '../../../components/FunnelClient'
+import { API_URL } from '../../../lib/api'
 
-async function load(slug, sp) {
-  try {
-    const ref = sp?.ref ? `?ref=${encodeURIComponent(sp.ref)}` : ''
-    const r = await fetch(`${API_URL}/api/products/${slug}${ref}`, { cache: 'no-store' })
-    return r.ok ? r.json() : null
-  } catch (error) {
-    console.error('Product funnel fetch failed:', error?.message || error)
-    return null
-  }
-}
-
-export default async function Page({ params, searchParams }) {
+export default async function ProductPage({ params, searchParams }) {
   const { slug } = await params
   const sp = await searchParams
-
-  // Merchant draft preview should still look like the real slug funnel page,
-  // but it fetches draft data client-side using the merchant login cookie.
-  if (sp?.draft) return <DraftProductFunnelClient draftId={sp.draft} slug={slug} />
-
-  const d = await load(slug, sp)
-
-  if (!d) {
-    return (
-      <main className="lux-page">
-        <div className="lux-container">
-          <div className="lux-error">Product not found</div>
-        </div>
-      </main>
-    )
-  }
-
-  return <ProductFunnelLux product={d.product} page={d.page} refCode={d.ref || sp?.ref || ''} related={d.related || []} />
+  const ref = sp?.ref || ''
+  let data = null
+  try {
+    const res = await fetch(`${API_URL}/api/public/products/${encodeURIComponent(slug)}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`, { cache: 'no-store' })
+    if (res.ok) data = await res.json()
+  } catch {}
+  if (!data) return <main style={{ padding: 40 }}><h1>Product not found</h1></main>
+  return <FunnelClient data={data} slug={slug} refCode={ref} />
 }

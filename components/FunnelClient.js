@@ -155,10 +155,87 @@ function SectionGroup({ kicker, title, items, dark=false }) {
   return <section className={`lf-section ${dark ? 'lf-dark' : ''}`}><div className="lf-section-head"><p>{kicker}</p><h2>{title}</h2></div><div className="lf-card-grid">{visibleItems.map(s=><article key={s.id || `${s.type}-${s.title}`} className="lf-copy-card">{hasText(s.title) && <h3>{s.title}</h3>}{hasText(s.body) && <div>{renderRich(s.body)}</div>}</article>)}</div></section>
 }
 
+function isGenericFaqTitle(title = '') {
+  const text = String(title || '').trim().toLowerCase()
+  return [
+    'faq',
+    'faqs',
+    '常见问题',
+    '常见问题解答',
+    '常見問題',
+    '常見問題解答',
+    'soalan lazim',
+    'soalan biasa'
+  ].includes(text)
+}
+
+function cleanFaqLine(line = '') {
+  return String(line || '')
+    .replace(/^\s*[✅✓✔•\-]+\s*/u, '')
+    .trim()
+}
+
+function parseFaqBody(section = {}) {
+  const lines = String(section.body || '')
+    .split('\n')
+    .map(cleanFaqLine)
+    .filter(Boolean)
+
+  const pairs = []
+  let current = null
+
+  for (const line of lines) {
+    const q = line.match(/^(?:Q|Question|问题|問題|Soalan)\s*[:：]\s*(.+)$/i)
+    const a = line.match(/^(?:A|Answer|答案|Jawapan)\s*[:：]\s*(.+)$/i)
+
+    if (q) {
+      if (current?.title && current?.body) pairs.push(current)
+      current = { ...section, id: `${section.id || 'faq'}-${pairs.length}`, title: q[1].trim(), body: '' }
+      continue
+    }
+
+    if (a && current) {
+      current.body = [current.body, a[1].trim()].filter(Boolean).join('\n')
+      continue
+    }
+
+    if (current) {
+      current.body = [current.body, line].filter(Boolean).join('\n')
+    }
+  }
+
+  if (current?.title && current?.body) pairs.push(current)
+  return pairs
+}
+
+function normalizeFaqItems(items = []) {
+  const output = []
+
+  for (const item of items || []) {
+    if (!item || item.isHidden) continue
+
+    if (isGenericFaqTitle(item.title)) {
+      const parsed = parseFaqBody(item)
+      if (parsed.length) output.push(...parsed)
+      continue
+    }
+
+    if (hasText(item.title) && hasText(item.body)) output.push(item)
+  }
+
+  const seen = new Set()
+  return output.filter(item => {
+    const key = String(item.title || '').trim().toLowerCase()
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function FAQ({ items, title }) {
-  const visibleItems = (items || []).filter(s => hasText(s.title) && hasText(s.body))
+  const visibleItems = normalizeFaqItems(items)
   if (!visibleItems.length) return null
-  return <section className="lf-section"><div className="lf-section-head"><p>{title}</p><h2>{title}</h2></div><div className="lf-faq-list">{visibleItems.map((s,i)=><details key={s.id || i}><summary>{s.title}</summary><div>{renderRich(s.body)}</div></details>)}</div></section>
+  return <section className="lf-section"><div className="lf-section-head"><p>{title}</p><h2>{title}</h2></div><div className="lf-faq-list">{visibleItems.map((s,i)=><details key={s.id || `${s.title}-${i}`}><summary>{s.title}</summary><div>{renderRich(s.body)}</div></details>)}</div></section>
 }
 
 function FunnelStyles(){return <style jsx global>{`

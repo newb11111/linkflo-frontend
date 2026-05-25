@@ -10,8 +10,7 @@ Core logic:
 - Customer clicks the promoter link, enters the funnel, and WhatsApp goes to that promoter.
 - Merchant tops up credit through Billplz.
 - Minimum topup is RM100.
-- AI Generate deducts 0.1 credit only after a real OpenAI generation succeeds.
-- If OPENAI_API_KEY is missing or OpenAI fails, no credit is deducted.
+- AI Generate deducts 0.1 credit each time.
 - Creating and publishing funnels is free.
 - Monthly plan fee is deducted from merchant credit.
 - Admin can manage merchants, credit, SKU quota, visibility, and deletion.
@@ -38,5 +37,3 @@ npm run dev
 ## Important
 
 Do not commit `.env` files. Use `.env.example` as reference only.
-
-AI Generate requires `OPENAI_API_KEY` in `backend/.env`. Without it, the backend returns an error and does not deduct merchant credit.

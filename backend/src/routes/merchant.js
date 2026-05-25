@@ -14,6 +14,22 @@ router.use(requireAuth, requireRole('MERCHANT'))
 const i18nSchema = z.object({ zh: z.string().optional(), en: z.string().optional(), bm: z.string().optional() }).passthrough().optional()
 const translationsSchema = z.object({ headline: i18nSchema, subheadline: i18nSchema, description: i18nSchema, priceNote: i18nSchema }).passthrough().optional()
 const sectionTranslationsSchema = z.object({ title: i18nSchema, body: i18nSchema }).passthrough().optional()
+const urlOrEmptySchema = z.preprocess(
+  value => value === null || value === undefined ? '' : value,
+  z.union([z.string().url(), z.literal('')]).optional()
+)
+const stringOrEmptySchema = z.preprocess(
+  value => value === null || value === undefined ? '' : value,
+  z.string().optional()
+)
+const gallerySchema = z.preprocess(
+  value => Array.isArray(value) ? value.filter(Boolean) : [],
+  z.array(z.string().url()).default([])
+)
+const galleryOptionalSchema = z.preprocess(
+  value => value === null || value === undefined ? undefined : value,
+  z.array(z.string().url()).optional()
+)
 
 function cleanLines(value = '') {
   return String(value || '').split('\n').map(x => x.trim()).filter(Boolean)
@@ -24,47 +40,25 @@ function joinBullets(value = '') {
 function mdHighlight(text) {
   return String(text || '').replace(/\[\[(.*?)\]\]/g, '**$1**')
 }
-function buildI18n(zh, en, bm) { return { zh: zh || '', en: en || '', bm: bm || '' } }
-function hasCjk(value = '') { return /[\u3400-\u9fff]/.test(String(value || '')) }
-function safeNonZh(value, fallback) {
-  const text = String(value || '').trim()
-  if (!text || hasCjk(text)) return fallback
-  return text
-}
+function buildI18n(zh, en, bm) { return { zh: zh || '', en: en || zh || '', bm: bm || en || zh || '' } }
 function fallbackFunnel(input = {}) {
   const name = input.name || input.productName || '这个产品'
-  const targetZh = input.targetCustomer || '正在寻找更好解决方案的顾客'
-  const targetEn = safeNonZh(input.targetCustomer, 'customers who want a clearer solution')
-  const targetBm = safeNonZh(input.targetCustomer, 'pelanggan yang mahukan solusi lebih jelas')
-
-  const pointsZh = joinBullets(input.keyPoints || input.sellingPoints || '重点卖点\n真实使用场景\n清楚行动理由')
-  const painsZh = joinBullets(input.painPoints || '有兴趣但不敢下单\n看了很多选择还是犹豫\n不知道这个产品适不适合自己')
-  const proofZh = joinBullets(input.proof || input.testimonials || '真实案例 / 顾客反馈\n产品图片 / 截图证明\n清楚说明交付或使用方式')
-
-  // Fallback cannot truly translate merchant-written text without OpenAI.
-  // To avoid Chinese placeholder/content leaking into EN/BM pages, use clean generic EN/BM copy here.
-  const pointsEn = joinBullets('Clear product benefits\nReal usage context\nEasy next step through WhatsApp')
-  const pointsBm = joinBullets('Manfaat produk yang jelas\nSituasi penggunaan sebenar\nLangkah seterusnya mudah melalui WhatsApp')
-  const painsEn = joinBullets('Interested but still unsure\nToo many choices and hard to decide\nNot sure whether this is suitable')
-  const painsBm = joinBullets('Berminat tetapi masih ragu\nTerlalu banyak pilihan dan sukar buat keputusan\nTidak pasti sama ada ini sesuai')
-  const proofEn = joinBullets('Real customer feedback or examples\nProduct photos or proof screenshots\nClear explanation of how it works')
-  const proofBm = joinBullets('Feedback atau contoh pelanggan sebenar\nGambar produk atau screenshot bukti\nPenerangan jelas tentang cara ia berfungsi')
-
-  const offerZh = input.offer || input.price || '点击 WhatsApp 了解今天适合你的方案'
-  const offerEn = safeNonZh(input.offer || input.price, 'WhatsApp now to get the most suitable offer today')
-  const offerBm = safeNonZh(input.offer || input.price, 'WhatsApp sekarang untuk dapatkan tawaran yang sesuai hari ini')
-
+  const target = input.targetCustomer || '正在寻找更好解决方案的顾客'
+  const points = joinBullets(input.keyPoints || input.sellingPoints || '重点卖点\n真实使用场景\n清楚行动理由')
+  const pains = joinBullets(input.painPoints || '有兴趣但不敢下单\n看了很多选择还是犹豫\n不知道这个产品适不适合自己')
+  const proof = joinBullets(input.proof || input.testimonials || '真实案例 / 顾客反馈\n产品图片 / 截图证明\n清楚说明交付或使用方式')
+  const offer = input.offer || input.price || '点击 WhatsApp 了解今天适合你的方案'
   return {
-    headline: buildI18n(`${name}：帮${targetZh}更快做决定`, `${name}: Help ${targetEn} decide faster`, `${name}: Bantu ${targetBm} buat keputusan dengan lebih yakin`),
+    headline: buildI18n(`${name}：帮${target}更快做决定`, `${name}: Help ${target} decide faster`, `${name}: Bantu ${target} buat keputusan dengan lebih yakin`),
     subheadline: buildI18n(`不是只看产品介绍，而是用 **重点理由**、案例和清楚 CTA 帮顾客行动。`, `Not just product info — use **clear reasons**, proof, and CTA to help customers take action.`, `Bukan sekadar info produk — gunakan **sebab utama**, bukti dan CTA yang jelas untuk bantu pelanggan bertindak.`),
-    description: buildI18n(`## 为什么值得了解\n${pointsZh}`, `## Why it is worth checking\n${pointsEn}`, `## Kenapa berbaloi untuk tahu\n${pointsBm}`),
-    priceNote: buildI18n(offerZh, offerEn, offerBm),
+    description: buildI18n(`## 为什么值得了解\n${points}`, `## Why it is worth checking\n${points}`, `## Kenapa berbaloi untuk tahu\n${points}`),
+    priceNote: buildI18n(offer, offer, offer),
     sections: [
-      { type:'PAIN', title: buildI18n('你是不是也遇到这些问题？','Are you facing these problems?','Adakah anda hadapi masalah ini?'), body: buildI18n(painsZh, painsEn, painsBm) },
-      { type:'SOLUTION', title: buildI18n(`${name} 怎样帮到你？`, `How ${name} helps`, `Bagaimana ${name} membantu anda`), body: buildI18n(`我们把卖点讲清楚，让顾客看到 **为什么现在要行动**。\n${pointsZh}`, `We make the offer clear so customers see **why they should act now**.\n${pointsEn}`, `Kami jelaskan nilai produk supaya pelanggan nampak **kenapa perlu bertindak sekarang**.\n${pointsBm}`) },
-      { type:'TRUST', title: buildI18n('为什么可以相信？','Why you can trust this','Kenapa boleh percaya?'), body: buildI18n(proofZh, proofEn, proofBm) },
-      { type:'OFFER', title: buildI18n('现在可以拿到什么？','What you get now','Apa yang anda dapat sekarang?'), body: buildI18n(`**${offerZh}**\n\n点击 WhatsApp，让负责人根据你的情况给你建议。`, `**${offerEn}**\n\nTap WhatsApp and let the promoter guide you based on your situation.`, `**${offerBm}**\n\nTekan WhatsApp dan promoter akan bantu ikut situasi anda.`) },
-      { type:'FAQ', title: buildI18n('我适合吗？','Is this suitable for me?','Adakah ini sesuai untuk saya?'), body: buildI18n(`如果你是${targetZh}，可以先 WhatsApp 了解，不需要马上决定。`, `If you are ${targetEn}, you can WhatsApp first before deciding.`, `Jika anda ${targetBm}, boleh WhatsApp dulu sebelum buat keputusan.`) },
+      { type:'PAIN', title: buildI18n('你是不是也遇到这些问题？','Are you facing these problems?','Adakah anda hadapi masalah ini?'), body: buildI18n(pains, pains, pains) },
+      { type:'SOLUTION', title: buildI18n(`${name} 怎样帮到你？`, `How ${name} helps`, `Bagaimana ${name} membantu anda`), body: buildI18n(`我们把卖点讲清楚，让顾客看到 **为什么现在要行动**。\n${points}`, `We make the offer clear so customers see **why they should act now**.\n${points}`, `Kami jelaskan nilai produk supaya pelanggan nampak **kenapa perlu bertindak sekarang**.\n${points}`) },
+      { type:'TRUST', title: buildI18n('为什么可以相信？','Why you can trust this','Kenapa boleh percaya?'), body: buildI18n(proof, proof, proof) },
+      { type:'OFFER', title: buildI18n('现在可以拿到什么？','What you get now','Apa yang anda dapat sekarang?'), body: buildI18n(`**${offer}**\n\n点击 WhatsApp，让负责人根据你的情况给你建议。`, `**${offer}**\n\nTap WhatsApp and let the promoter guide you based on your situation.`, `**${offer}**\n\nTekan WhatsApp dan promoter akan bantu ikut situasi anda.`) },
+      { type:'FAQ', title: buildI18n('我适合吗？','Is this suitable for me?','Adakah ini sesuai untuk saya?'), body: buildI18n(`如果你是${target}，可以先 WhatsApp 了解，不需要马上决定。`, `If you are ${target}, you can WhatsApp first before deciding.`, `Jika anda ${target}, boleh WhatsApp dulu sebelum buat keputusan.`) },
       { type:'CTA', title: buildI18n('现在就 WhatsApp 了解','WhatsApp now to know more','WhatsApp sekarang untuk tahu lanjut'), body: buildI18n('发送信息后，负责人会根据你的情况回复。', 'Send a message and the promoter will reply based on your situation.', 'Hantar mesej dan promoter akan balas ikut situasi anda.') }
     ]
   }
@@ -98,7 +92,7 @@ router.post('/product', async (req, res, next) => {
     const skuLimit = 1 + merchant.extraSkuCredits
     if (existingProducts >= skuLimit) return res.status(403).json({ message: `目前可创建 ${skuLimit} 个 SKU。增加 SKU：一次性 +RM100 / SKU，请联系 Admin 开通。` })
     const body = z.object({
-      name: z.string().min(1), headline: z.string().min(1), subheadline: z.string().optional(), description: z.string().optional(), sop: z.string().optional(), priceNote: z.string().optional(), imageUrl: z.string().url().optional().or(z.literal('')), heroImageUrl: z.string().url().optional().or(z.literal('')), videoUrl: z.string().optional().or(z.literal('')), galleryImages: z.array(z.string().url()).default([]), translations: translationsSchema.default({}), isPublished: z.boolean().default(true), isHidden: z.boolean().default(false), sections: z.array(z.object({ type: z.string().default('TEXT'), title: z.string().min(1), body: z.string().min(1), position: z.number().int().default(0), isHidden: z.boolean().default(false), translations: sectionTranslationsSchema.default({}) })).default([])
+      name: z.string().min(1), headline: z.string().min(1), subheadline: z.string().optional(), description: z.string().optional(), sop: z.string().optional(), priceNote: z.string().optional(), imageUrl: urlOrEmptySchema, heroImageUrl: urlOrEmptySchema, videoUrl: stringOrEmptySchema, galleryImages: gallerySchema, translations: translationsSchema.default({}), isPublished: z.boolean().default(true), isHidden: z.boolean().default(false), sections: z.array(z.object({ type: z.string().default('TEXT'), title: z.string().min(1), body: z.string().min(1), position: z.number().int().default(0), isHidden: z.boolean().default(false), translations: sectionTranslationsSchema.default({}) })).default([])
     }).parse(req.body)
     const baseSlug = slugify(body.name, { lower: true, strict: true }) || 'product'
     const slug = `${baseSlug}-${nanoid()}`
@@ -112,7 +106,7 @@ router.put('/product/:id', async (req, res, next) => {
     const merchant = await getMerchant(req)
     const product = await prisma.product.findFirst({ where: { id: req.params.id, merchantId: merchant.id } })
     if (!product) return res.status(404).json({ message: 'Product not found' })
-    const body = z.object({ name: z.string().min(1).optional(), headline: z.string().min(1).optional(), subheadline: z.string().optional(), description: z.string().optional(), sop: z.string().optional(), priceNote: z.string().optional(), imageUrl: z.string().url().optional().or(z.literal('')), heroImageUrl: z.string().url().optional().or(z.literal('')), videoUrl: z.string().optional().or(z.literal('')), galleryImages: z.array(z.string().url()).optional(), translations: translationsSchema.optional(), isPublished: z.boolean().optional(), isHidden: z.boolean().optional(), sections: z.array(z.object({ type: z.string().default('TEXT'), title: z.string().min(1), body: z.string().min(1), position: z.number().int().default(0), isHidden: z.boolean().default(false), translations: sectionTranslationsSchema.default({}) })).optional() }).parse(req.body)
+    const body = z.object({ name: z.string().min(1).optional(), headline: z.string().min(1).optional(), subheadline: z.string().optional(), description: z.string().optional(), sop: z.string().optional(), priceNote: z.string().optional(), imageUrl: urlOrEmptySchema, heroImageUrl: urlOrEmptySchema, videoUrl: stringOrEmptySchema, galleryImages: galleryOptionalSchema, translations: translationsSchema.optional(), isPublished: z.boolean().optional(), isHidden: z.boolean().optional(), sections: z.array(z.object({ type: z.string().default('TEXT'), title: z.string().min(1), body: z.string().min(1), position: z.number().int().default(0), isHidden: z.boolean().default(false), translations: sectionTranslationsSchema.default({}) })).optional() }).parse(req.body)
     const { sections, ...data } = body
     if (data.imageUrl === '') data.imageUrl = null
     if (data.heroImageUrl === '') data.heroImageUrl = null
@@ -127,146 +121,40 @@ router.put('/product/:id', async (req, res, next) => {
 
 
 
-function stripJsonFence(value = '') {
-  return String(value || '')
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```$/i, '')
-    .trim()
-}
-
-function buildLinkFloPrompt(input = {}) {
-  return `You are generating copy for LinkFlo, a lightweight AI funnel system for Malaysia merchants.
-
-IMPORTANT BUSINESS LOGIC:
-- This is NOT an ecommerce checkout page.
-- There is NO online payment, cart, order system, payout system, or marketplace.
-- The page goal is: customer reads the funnel -> clicks WhatsApp -> chats with the PROMOTER.
-- Promoter uses an affiliate link to bring traffic and closes the customer on WhatsApp.
-
-PRODUCT DATA:
-${JSON.stringify(input, null, 2)}
-
-OUTPUT STRICT JSON ONLY. No markdown code fence. No explanation.
-
-Required JSON schema:
-{
-  "headline": { "zh": "", "en": "", "bm": "" },
-  "subheadline": { "zh": "", "en": "", "bm": "" },
-  "description": { "zh": "", "en": "", "bm": "" },
-  "priceNote": { "zh": "", "en": "", "bm": "" },
-  "sections": [
-    { "type": "PAIN", "title": { "zh": "", "en": "", "bm": "" }, "body": { "zh": "", "en": "", "bm": "" } },
-    { "type": "SOLUTION", "title": { "zh": "", "en": "", "bm": "" }, "body": { "zh": "", "en": "", "bm": "" } },
-    { "type": "TRUST", "title": { "zh": "", "en": "", "bm": "" }, "body": { "zh": "", "en": "", "bm": "" } },
-    { "type": "OFFER", "title": { "zh": "", "en": "", "bm": "" }, "body": { "zh": "", "en": "", "bm": "" } },
-    { "type": "FAQ", "title": { "zh": "", "en": "", "bm": "" }, "body": { "zh": "", "en": "", "bm": "" } },
-    { "type": "CTA", "title": { "zh": "", "en": "", "bm": "" }, "body": { "zh": "", "en": "", "bm": "" } }
-  ]
-}
-
-COPYWRITING RULES:
-1. Generate complete zh, en, and bm for EVERY text field.
-2. Do not copy Chinese into English or BM. Translate meaning naturally.
-3. Do not output placeholders, demo instructions, or empty filler. Forbidden examples: 写痛点, 核心卖点, 常见问题, 写 3 个卖点, 122, lorem ipsum.
-4. Do not mention online checkout, payment gateway, cart, order tracking, delivery, or platform commission unless merchant explicitly provided that information.
-5. Use Malaysia-friendly WhatsApp conversion copy. The CTA should guide customers to WhatsApp the promoter.
-6. Keep copy direct, mobile-friendly, and easy to scan.
-7. Use **highlight** markdown only for important words, not every sentence.
-8. Body fields should usually use short paragraphs or bullet lines starting with "- ".
-9. Preserve product names, brand names, and prices exactly when provided.
-10. If product information is limited, infer safe generic benefits based on the industry, but do not invent fake testimonials, fake guarantees, fake results, or fake certifications.
-11. Avoid absolute claims such as 100%, guaranteed, 一定, 肯定, 包成功, miracle, cure, sembuh pasti.
-12. FAQ should contain real buyer objections and answers in the same body field, formatted as short Q/A lines.
-13. priceNote should be based on price/offer if provided. If not provided, use a soft WhatsApp CTA such as asking for current details.
-14. Return valid parseable JSON only.`
-}
-
-function assertValidFunnelPayload(funnel) {
-  const requiredRoot = ['headline', 'subheadline', 'description', 'priceNote']
-  const langs = ['zh', 'en', 'bm']
-  for (const key of requiredRoot) {
-    if (!funnel || typeof funnel[key] !== 'object') throw new Error(`AI output missing ${key}`)
-    for (const lang of langs) {
-      if (typeof funnel[key][lang] !== 'string') throw new Error(`AI output missing ${key}.${lang}`)
-    }
-  }
-  if (!Array.isArray(funnel.sections) || !funnel.sections.length) throw new Error('AI output missing sections')
-  for (const [index, section] of funnel.sections.entries()) {
-    if (!section.type || typeof section.type !== 'string') throw new Error(`AI output missing sections[${index}].type`)
-    for (const field of ['title', 'body']) {
-      if (!section[field] || typeof section[field] !== 'object') throw new Error(`AI output missing sections[${index}].${field}`)
-      for (const lang of langs) {
-        if (typeof section[field][lang] !== 'string') throw new Error(`AI output missing sections[${index}].${field}.${lang}`)
-      }
-    }
-  }
-}
-
 router.post('/ai-generate', async (req, res, next) => {
   try {
     const merchant = await getMerchant(req)
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(503).json({
-        message: 'AI Generate 还没开启：backend/.env 需要填写 OPENAI_API_KEY。Credit 没有被扣。',
-        needOpenAIKey: true
-      })
-    }
     if (Number(merchant.creditBalance || 0) < AI_GENERATE_COST) return res.status(402).json({ message: `Credit 不足。AI Generate 需要 ${AI_GENERATE_COST} credit，请先充值。`, needTopup: true })
-
     const body = z.object({
-      name: z.string().min(1),
-      industry: z.string().optional(),
-      price: z.string().optional(),
-      targetCustomer: z.string().optional(),
-      keyPoints: z.string().optional(),
-      painPoints: z.string().optional(),
-      proof: z.string().optional(),
-      offer: z.string().optional(),
-      language: z.enum(['zh','en','bm']).default('zh')
+      name: z.string().min(1), industry: z.string().optional(), price: z.string().optional(), targetCustomer: z.string().optional(), keyPoints: z.string().optional(), painPoints: z.string().optional(), proof: z.string().optional(), offer: z.string().optional(), language: z.enum(['zh','en','bm']).default('zh')
     }).parse(req.body)
 
-    const prompt = buildLinkFloPrompt(body)
-    let out
-    try {
-      const r = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-        body: JSON.stringify({
-          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-          temperature: 0.58,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role:'system', content:"You are LinkFlo's senior direct-response funnel strategist for Malaysia WhatsApp commerce. Return strict valid JSON only." },
-            { role:'user', content: prompt }
-          ]
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const prompt = `Generate a high-converting tri-language funnel JSON for Malaysia. Keep markdown **highlight** styles. Languages: zh,en,bm. Product data: ${JSON.stringify(body)}. Return JSON only with headline, subheadline, description, priceNote, sections [{type,title,body}] where text values are {zh,en,bm}.`;
+        const r = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+          body: JSON.stringify({ model: process.env.OPENAI_MODEL || 'gpt-4o-mini', temperature: 0.65, messages: [{ role:'system', content:'You are a direct response funnel copywriter. Output strict JSON only.' }, { role:'user', content: prompt }] })
         })
-      })
-      out = await r.json()
-      if (!r.ok) {
-        const detail = out?.error?.message || `OpenAI request failed with status ${r.status}`
-        return res.status(502).json({ message: `AI Generate 失败：${detail}。Credit 没有被扣。`, source: 'openai_error' })
+        const out = await r.json()
+        const text = out?.choices?.[0]?.message?.content?.replace(/^```json\s*/,'').replace(/```$/,'')
+        const parsed = JSON.parse(text)
+        await prisma.$transaction(async tx => {
+          await tx.merchant.update({ where: { id: merchant.id }, data: { creditBalance: roundCredit(Number(merchant.creditBalance || 0) - AI_GENERATE_COST) } })
+          await tx.billingTransaction.create({ data: { merchantId: merchant.id, type: 'AI_GENERATE', amount: AI_GENERATE_COST, creditAmount: -AI_GENERATE_COST, status: 'PAID', rawPayload: { source: 'openai' } } })
+        })
+        return res.json({ source: 'openai', funnel: parsed })
+      } catch (e) {
+        // fallback below
       }
-    } catch (networkErr) {
-      return res.status(502).json({ message: 'AI Generate 失败：无法连接 OpenAI。Credit 没有被扣。', source: 'openai_network_error' })
     }
-
-    let parsed
-    try {
-      const text = stripJsonFence(out?.choices?.[0]?.message?.content || '')
-      parsed = JSON.parse(text)
-      assertValidFunnelPayload(parsed)
-    } catch (parseErr) {
-      return res.status(502).json({ message: 'AI Generate 失败：OpenAI 回传格式不正确。Credit 没有被扣。', source: 'openai_parse_error' })
-    }
-
+    const funnel = fallbackFunnel(body)
     await prisma.$transaction(async tx => {
       await tx.merchant.update({ where: { id: merchant.id }, data: { creditBalance: roundCredit(Number(merchant.creditBalance || 0) - AI_GENERATE_COST) } })
-      await tx.billingTransaction.create({ data: { merchantId: merchant.id, type: 'AI_GENERATE', amount: AI_GENERATE_COST, creditAmount: -AI_GENERATE_COST, status: 'PAID', rawPayload: { source: 'openai', model: process.env.OPENAI_MODEL || 'gpt-4o-mini' } } })
+      await tx.billingTransaction.create({ data: { merchantId: merchant.id, type: 'AI_GENERATE', amount: AI_GENERATE_COST, creditAmount: -AI_GENERATE_COST, status: 'PAID', rawPayload: { source: 'fallback' } } })
     })
-
-    res.json({ source: 'openai', funnel: parsed })
+    res.json({ source: 'fallback', funnel })
   } catch (err) { next(err) }
 })
 

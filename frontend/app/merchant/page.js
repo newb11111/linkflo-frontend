@@ -19,20 +19,36 @@ function normalizeSectionType(type = '') {
   if (value === 'BENEFIT') return 'SOLUTION'
   return SECTION_ORDER.includes(value) ? value : 'OFFER'
 }
+function zhText(field = {}, fallback = '') {
+  if (field && typeof field === 'object' && typeof field.zh === 'string') return field.zh
+  return fallback || ''
+}
+function sectionZhValue(section = {}, key = 'title') {
+  const translations = section.translations || {}
+  return zhText(translations[key], section[key] || '')
+}
+
 function sectionOrderValue(section) {
   const idx = SECTION_ORDER.indexOf(normalizeSectionType(section?.type))
   return idx === -1 ? SECTION_ORDER.length : idx
 }
 function normalizeSection(section = {}, position = 0) {
   const type = normalizeSectionType(section.type)
+  const translations = section.translations || {}
+  const title = sectionZhValue(section, 'title')
+  const body = sectionZhValue(section, 'body')
   return {
     ...section,
     type,
-    title: section.title || '',
-    body: section.body || '',
+    title,
+    body,
     position,
     isHidden: Boolean(section.isHidden),
-    translations: section.translations || {}
+    translations: {
+      ...translations,
+      title: { ...(translations.title || {}), zh: title },
+      body: { ...(translations.body || {}), zh: body }
+    }
   }
 }
 function orderSections(sections = []) {
@@ -51,6 +67,18 @@ function syncZhTranslation(section = {}) {
       body: { ...(translations.body || {}), zh: section.body || '' }
     }
   }
+}
+function resetOtherLangs(field = {}) {
+  return { zh: field?.zh || '' }
+}
+function syncProductTranslation(product = {}, patch = {}) {
+  const translations = { ...(product.translations || {}) }
+  for (const key of ['headline', 'subheadline', 'description', 'priceNote']) {
+    if (Object.prototype.hasOwnProperty.call(patch, key)) {
+      translations[key] = { zh: patch[key] || '' }
+    }
+  }
+  return translations
 }
 const emptySection = (type='PAIN', position=0) => ({ type: normalizeSectionType(type), title:'', body:'', position, isHidden:false, translations:{} })
 const defaultProduct = () => ({
@@ -81,13 +109,29 @@ export default function MerchantPage() {
   const [product, setProduct] = useState(defaultProduct())
   const [link, setLink] = useState({ productId:'', promoterName:'', promoterPhone:'', promoterId:'' })
   const [aiInput, setAiInput] = useState({ industry:'', targetCustomer:'', keyPoints:'', painPoints:'', proof:'', offer:'', price:'' })
+  const [aiModal, setAiModal] = useState(null)
+  const [profileForm, setProfileForm] = useState({ ownerName:'', brandName:'', whatsapp:'', email:'' })
 
   async function guard(){ try{ const me = await api('/api/auth/me'); if(me.role !== 'MERCHANT'){ window.location.href='/admin'; return false } return true } catch(e){ window.location.href='/login'; return false } }
-  async function load(){ try{ const [d,b] = await Promise.all([api('/api/merchant/dashboard'), api('/api/billing/merchant/summary')]); setData(d); setBilling(b); setPlanToApply(b?.merchant?.plan || d?.merchant?.plan || 'STARTER'); if(d.products?.[0]) setLink(v=>({...v,productId:v.productId || d.products[0].id})) }catch(e){ setMsg(e.message) } }
+  async function load(){
+    try{
+      const [d,b] = await Promise.all([api('/api/merchant/dashboard'), api('/api/billing/merchant/summary')])
+      setData(d)
+      setBilling(b)
+      setPlanToApply(b?.merchant?.plan || d?.merchant?.plan || 'STARTER')
+      setProfileForm({
+        ownerName: d?.merchant?.user?.name || '',
+        brandName: d?.merchant?.brandName || '',
+        whatsapp: d?.merchant?.whatsapp || '',
+        email: d?.merchant?.user?.email || ''
+      })
+      if(d.products?.[0]) setLink(v=>({...v,productId:v.productId || d.products[0].id}))
+    }catch(e){ setMsg(e.message) }
+  }
   useEffect(()=>{ (async()=>{ const ok=await guard(); if(ok){ await load(); setChecking(false) } })() },[])
   useEffect(()=>{ if(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('billing') === 'return') setMsg(tr('returnedBilling')) },[tr])
 
-  function patchProduct(patch){ setProduct(p=>({...p,...patch})) }
+  function patchProduct(patch){ setProduct(p=>({...p,...patch,translations:syncProductTranslation(p,patch)})) }
   function patchSection(i, patch){
     setProduct(p=>({
       ...p,
@@ -96,10 +140,10 @@ export default function MerchantPage() {
         const next = { ...s, ...patch }
         const translations = next.translations || {}
         if (Object.prototype.hasOwnProperty.call(patch, 'title')) {
-          next.translations = { ...translations, title: { ...(translations.title || {}), zh: patch.title || '' } }
+          next.translations = { ...translations, title: { zh: patch.title || '' } }
         }
         if (Object.prototype.hasOwnProperty.call(patch, 'body')) {
-          next.translations = { ...(next.translations || translations), body: { ...(translations.body || {}), zh: patch.body || '' } }
+          next.translations = { ...(next.translations || translations), body: { zh: patch.body || '' } }
         }
         return next
       })
@@ -126,11 +170,27 @@ export default function MerchantPage() {
   async function uploadOne(file, key){ if(!file) return; setMsg(tr('uploading')); const fd=new FormData(); fd.append('file',file); const up=await api('/api/upload/media',{method:'POST',body:fd}); patchProduct({[key]:up.url}); setMsg(tr('uploaded')) }
   async function uploadGallery(files){ const list=Array.from(files||[]).slice(0,9); if(!list.length) return; setMsg(tr('uploadingGallery')); const fd=new FormData(); list.forEach(f=>fd.append('files',f)); const up=await api('/api/upload/images',{method:'POST',body:fd}); patchProduct({galleryImages:[...(product.galleryImages||[]),...(up.urls||[])].slice(0,9)}); setMsg(tr('galleryUploaded')) }
 
+  function aiRequiredMissing() {
+    const missing = []
+    if (!product.name.trim()) missing.push(tr('productName'))
+    if (!String(aiInput.targetCustomer || '').trim()) missing.push(tr('targetCustomer'))
+    if (!String(aiInput.keyPoints || '').trim()) missing.push(tr('keyPoints'))
+    if (!String(aiInput.painPoints || '').trim()) missing.push(tr('painPoints'))
+    if (!String(profileForm.whatsapp || '').trim()) missing.push(tr('whatsapp'))
+    return missing
+  }
+
   async function generateFunnel() {
-    if (!product.name.trim()) { setMsg(tr('needProductName')); return }
+    const missing = aiRequiredMissing()
+    if (missing.length) {
+      setAiModal({ type:'missing', title:tr('aiRequiredTitle'), body:tr('aiRequiredIntro'), lines:missing })
+      setMsg(tr('aiRequiredTitle'))
+      return
+    }
+    setAiModal({ type:'loading', title:tr('aiGeneratingTitle'), body:tr('aiGeneratingBody') })
     setMsg(tr('aiGenerating'))
     try {
-      const result = await api('/api/merchant/ai-generate', { method:'POST', body: JSON.stringify({ name: product.name, price: product.priceNote || aiInput.price, ...aiInput }) })
+      const result = await api('/api/merchant/ai-generate', { method:'POST', body: JSON.stringify({ name: product.name, price: product.priceNote || aiInput.price, brandName: profileForm.brandName, merchantWhatsapp: profileForm.whatsapp, ...aiInput }) })
       const f = result.funnel || {}
       const sections = orderSections((f.sections || []).map((sec, i) => ({
         type: normalizeSectionType(sec.type || 'OFFER'),
@@ -149,10 +209,15 @@ export default function MerchantPage() {
         translations: { ...(p.translations || {}), headline: f.headline || {}, subheadline: f.subheadline || {}, description: f.description || {}, priceNote: f.priceNote || {} },
         sections: sections.length ? sections : p.sections
       }))
-      setMsg(result.source === 'openai' ? tr('aiDone') : tr('aiFallback'))
+      setAiModal({ type:'success', title:tr('aiSuccessTitle'), body:tr('aiDone') })
+      setMsg(tr('aiDone'))
       await load()
-    } catch (e) { setMsg(e.message) }
+    } catch (e) {
+      setAiModal({ type:'error', title:tr('aiFailTitle'), body:e.message || tr('aiFailBody') })
+      setMsg(e.message)
+    }
   }
+
 
   async function saveProduct(e){
     e.preventDefault(); setMsg('')
@@ -194,6 +259,15 @@ export default function MerchantPage() {
   async function topup(e){ e.preventDefault(); setMsg(''); try{ const result = await api('/api/billing/merchant/topup',{method:'POST',body:JSON.stringify({amount:Number(topupAmount)})}); setMsg(result.message || tr('openBill')); if(result.billUrl) window.location.href = result.billUrl; await load() }catch(e){ setMsg(e.message) } }
   async function applyPlan(){ if(!confirm(tr('confirmUseCredit'))) return; setMsg(''); try{ const result = await api('/api/billing/merchant/apply-credit',{method:'POST',body:JSON.stringify({type:'PLAN_CHANGE', plan:planToApply})}); setMsg(result.message); await load() }catch(e){ setMsg(e.message) } }
   async function buySku(){ if(!confirm(tr('confirmUseCredit'))) return; setMsg(''); try{ const result = await api('/api/billing/merchant/apply-credit',{method:'POST',body:JSON.stringify({type:'SKU_CREDIT', skuCredits:Number(extraSkuCount)})}); setMsg(result.message); await load() }catch(e){ setMsg(e.message) } }
+  async function saveProfile(e){
+    e.preventDefault()
+    setMsg('')
+    try{
+      const result = await api('/api/merchant/profile',{method:'PUT',body:JSON.stringify(profileForm)})
+      setMsg(result.message || tr('profileUpdated'))
+      await load()
+    }catch(e){ setMsg(e.message) }
+  }
   async function logout(){ await doLogout(); window.location.href='/login' }
 
   const skuLimit = data?.skuLimit || 1
@@ -203,12 +277,22 @@ export default function MerchantPage() {
   const credit = billing?.merchant?.creditBalance ?? data?.merchant?.creditBalance ?? 0
   if(checking) return <main className="lf-shell"><MerchantStyles/><h2>{tr('checkingLogin')}</h2></main>
 
-  const panels=[['dashboard',tr('totalData')],['billing',tr('billing')],['builder',tr('funnelBuilder')],['products',tr('skuList')],['promoterCreate',tr('createPromoter')],['promoters',tr('promoterList')]]
+  const panels=[['dashboard',tr('totalData')],['profile',tr('merchantProfile')],['billing',tr('billing')],['builder',tr('funnelBuilder')],['products',tr('skuList')],['promoterCreate',tr('createPromoter')],['promoters',tr('promoterList')]]
   return <main className="lf-shell"><MerchantStyles/>
     <div className="lf-topbar"><div><p>{tr('aiFunnelEngine')}</p><h1>{data?.merchant?.brandName || tr('merchantDashboard')}</h1></div><div className="lf-actions"><LanguageToggle compact /><button onClick={()=>setMenuOpen(true)} className="lf-menu-btn">{tr('menu')}</button><button onClick={logout} className="lf-ghost">{tr('logout')}</button></div></div>
     <aside className={`lf-drawer ${menuOpen?'open':''}`}><div><b>{tr('merchantMenu')}</b><button onClick={()=>setMenuOpen(false)}>×</button></div>{panels.map(([k,l])=><button key={k} className={activePanel===k?'active':''} onClick={()=>{setActivePanel(k);setMenuOpen(false)}}>{l}</button>)}<button onClick={logout} className="logout">{tr('logout')}</button></aside>{menuOpen&&<div className="lf-backdrop" onClick={()=>setMenuOpen(false)}/>} {msg&&<p className="lf-notice">{msg}</p>}
+    {aiModal && <div className="lf-modal-backdrop"><div className="lf-modal"><div className="lf-modal-head"><h3>{aiModal.title}</h3>{aiModal.type!=='loading' && <button type="button" onClick={()=>setAiModal(null)}>×</button>}</div><p>{aiModal.body}</p>{aiModal.type==='loading' && <div className="lf-loading-bar"><span /></div>}{Array.isArray(aiModal.lines) && <ul>{aiModal.lines.map((line,i)=><li key={`${line}-${i}`}>{line}</li>)}</ul>} {aiModal.type!=='loading' && <button type="button" className="lf-primary" onClick={()=>setAiModal(null)}>{tr('close')}</button>}</div></div>}
 
     <section className={activePanel==='dashboard'?'':'lf-hide-mobile'}><div className="lf-metrics"><Metric label={tr('creditBalance')} value={`RM ${Number(credit).toFixed(1)}`}/><Metric label={tr('package')} value={data?.merchant?.plan || 'STARTER'}/><Metric label={tr('sku')} value={`${data?.products?.length||0}/${skuLimit}`}/><Metric label={tr('promoters')} value={data?.rankings?.length||0}/><Metric label={tr('waClicksShort')} value={(data?.rankings||[]).reduce((s,r)=>s+(r.whatsappClicks||0),0)}/></div></section>
+    <section className={`lf-card ${activePanel==='profile'?'':'lf-hide-mobile'}`}><div className="lf-head"><div><p>{tr('profile')}</p><h2>{tr('merchantProfile')}</h2></div></div>
+      <form onSubmit={saveProfile} className="lf-builder">
+        <div className="lf-ai-box"><b>{tr('profileDesc')}</b><p>{tr('profileHelp')}</p></div>
+        <div className="lf-grid2"><div><label>{tr('ownerName')}</label><input className="lf-input" value={profileForm.ownerName} onChange={e=>setProfileForm({...profileForm,ownerName:e.target.value})}/></div><div><label>{tr('email')}</label><input className="lf-input" value={profileForm.email} disabled /></div></div>
+        <div className="lf-grid2"><div><label>{tr('brandName')}</label><input className="lf-input" value={profileForm.brandName} onChange={e=>setProfileForm({...profileForm,brandName:e.target.value})}/></div><div><label>{tr('whatsapp')}</label><input className="lf-input" value={profileForm.whatsapp} onChange={e=>setProfileForm({...profileForm,whatsapp:e.target.value})}/></div></div>
+        <button className="lf-primary big">{tr('saveProfile')}</button>
+      </form>
+    </section>
+
 
     <section className={`lf-card ${activePanel==='billing'?'':'lf-hide-mobile'}`}><div className="lf-head"><div><p>{tr('billing')}</p><h2>{tr('topupCredit')}</h2></div></div>
       <div className="lf-billing-grid">
@@ -223,7 +307,7 @@ export default function MerchantPage() {
 
     <section className={`lf-card ${activePanel==='builder'?'':'lf-hide-mobile'}`}><div className="lf-head"><div><p>{tr('builderV2')}</p><h2>{product.id?tr('builderTitleEdit'):tr('builderTitleCreate')}</h2></div><button className="lf-mini muted" onClick={()=>setProduct(defaultProduct())}>{tr('resetForm')}</button></div>
       <form onSubmit={saveProduct} className="lf-builder">
-        <div className="lf-ai-box"><b>{tr('aiGenerateTitle')}</b><p>{tr('aiGenerateDesc')}</p><div><input className="lf-input" placeholder={tr('industryPlaceholder')} value={aiInput.industry} onChange={e=>setAiInput({...aiInput,industry:e.target.value})}/><input className="lf-input" placeholder={tr('targetCustomer')} value={aiInput.targetCustomer} onChange={e=>setAiInput({...aiInput,targetCustomer:e.target.value})}/><textarea className="lf-input" placeholder={tr('keyPoints')} value={aiInput.keyPoints} onChange={e=>setAiInput({...aiInput,keyPoints:e.target.value})}/><textarea className="lf-input" placeholder={tr('painPoints')} value={aiInput.painPoints} onChange={e=>setAiInput({...aiInput,painPoints:e.target.value})}/><textarea className="lf-input" placeholder={tr('proof')} value={aiInput.proof} onChange={e=>setAiInput({...aiInput,proof:e.target.value})}/><input className="lf-input" placeholder={tr('offerPlaceholder')} value={aiInput.offer} onChange={e=>setAiInput({...aiInput,offer:e.target.value})}/></div><button type="button" className="lf-primary" onClick={generateFunnel}>{tr('aiGenerate')}</button></div>
+        <div className="lf-ai-box"><b>{tr('aiGenerateTitle')}</b><p>{tr('aiGenerateDesc')}</p><p>{tr('autoTranslateNote')}</p><div><input className="lf-input" placeholder={tr('industryPlaceholder')} value={aiInput.industry} onChange={e=>setAiInput({...aiInput,industry:e.target.value})}/><input className="lf-input" placeholder={tr('targetCustomer')} value={aiInput.targetCustomer} onChange={e=>setAiInput({...aiInput,targetCustomer:e.target.value})}/><textarea className="lf-input" placeholder={tr('keyPoints')} value={aiInput.keyPoints} onChange={e=>setAiInput({...aiInput,keyPoints:e.target.value})}/><textarea className="lf-input" placeholder={tr('painPoints')} value={aiInput.painPoints} onChange={e=>setAiInput({...aiInput,painPoints:e.target.value})}/><textarea className="lf-input" placeholder={tr('proof')} value={aiInput.proof} onChange={e=>setAiInput({...aiInput,proof:e.target.value})}/><input className="lf-input" placeholder={tr('offerPlaceholder')} value={aiInput.offer} onChange={e=>setAiInput({...aiInput,offer:e.target.value})}/></div><button type="button" className="lf-primary" onClick={generateFunnel}>{tr('aiGenerate')}</button></div>
         <div className="lf-grid2"><div><label>{tr('productName')}</label><input className="lf-input" value={product.name} onChange={e=>patchProduct({name:e.target.value})}/></div><div><label>{tr('priceNote')}</label><input className="lf-input" value={product.priceNote} onChange={e=>patchProduct({priceNote:e.target.value})}/></div></div>
         <label>{tr('heroHeadline')}</label><input className="lf-input" value={product.headline} onChange={e=>patchProduct({headline:e.target.value})}/>
         <label>{tr('subheadline')}</label><textarea className="lf-input" value={product.subheadline||''} onChange={e=>patchProduct({subheadline:e.target.value})}/>
@@ -261,5 +345,5 @@ export default function MerchantPage() {
 }
 function Metric({label,value}){return <div className="lf-metric"><span>{label}</span><strong>{value}</strong></div>}
 function MerchantStyles(){return <style jsx global>{`
-  .lf-shell{max-width:1180px;margin:0 auto;padding:14px 14px 60px;color:#0f172a}.lf-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 0;background:rgba(246,248,251,.88);backdrop-filter:blur(12px)}.lf-topbar p,.lf-head p{margin:0;color:#2563eb;font-size:12px;font-weight:950;letter-spacing:.12em}.lf-topbar h1,.lf-head h2{margin:0}.lf-actions,.lf-row-actions{display:flex;gap:8px;flex-wrap:wrap}.lf-menu-btn,.lf-ghost,.lf-primary,.lf-mini{border:0;border-radius:14px;font-weight:850;cursor:pointer}.lf-menu-btn,.lf-primary{background:#0b5cff;color:white}.lf-menu-btn,.lf-ghost{padding:11px 14px}.lf-ghost{background:white;color:#0f172a;border:1px solid #dbe3ef}.lf-primary{padding:12px 15px}.lf-primary.big{font-size:16px;padding:15px}.lf-mini{background:#0b5cff;color:white;padding:8px 10px;font-size:12px;text-decoration:none}.lf-mini.link{display:inline-flex}.lf-mini.muted{background:#e2e8f0;color:#334155}.lf-mini.danger{background:#ef4444}.lf-notice{background:#ecfdf5;border:1px solid #bbf7d0;padding:12px 14px;border-radius:16px}.lf-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:8px 0 18px}.lf-metric,.lf-card,.lf-ai-box,.lf-section-edit{background:white;border:1px solid #e5edf7;border-radius:24px;box-shadow:0 12px 35px rgba(15,23,42,.06)}.lf-metric{padding:18px}.lf-metric span{display:block;color:#64748b}.lf-metric strong{display:block;margin-top:8px;font-size:25px}.lf-card{padding:18px;margin-bottom:18px}.lf-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.lf-builder{display:grid;gap:12px}.lf-ai-box{padding:16px;display:grid;gap:10px;background:#f8fbff}.lf-ai-box p{margin:0;color:#64748b;line-height:1.55}.lf-ai-box>div{display:grid;gap:8px}.lf-input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #dbe3ef;border-radius:14px;background:#fff;font-size:14px}.lf-input.tall,textarea.lf-input{min-height:96px}.lf-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.lf-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.lf-billing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.lf-section-groups{display:grid;gap:14px}.lf-section-group{background:#f8fbff;border:1px solid #e5edf7;border-radius:24px;padding:14px;display:grid;gap:10px}.lf-section-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.lf-section-group-head strong{font-size:15px;color:#0f172a}.lf-section-edit{padding:14px;display:grid;gap:9px}.lf-add-section{justify-self:start;background:#0b5cff}.lf-gallery-admin{display:flex;gap:8px;overflow-x:auto}.lf-gallery-admin img{height:86px;width:86px;object-fit:cover;border-radius:14px}.lf-mini-list{display:grid;gap:10px}.lf-mini-list>div{background:#fff;border:1px solid #e5edf7;border-radius:18px;padding:13px;display:grid;gap:6px}.lf-mini-list span{color:#64748b;font-size:13px}.lf-drawer{position:fixed;right:-320px;top:0;width:290px;max-width:82vw;height:100vh;background:#fff;z-index:40;box-shadow:-18px 0 50px rgba(15,23,42,.18);padding:18px;transition:.2s}.lf-drawer.open{right:0}.lf-drawer>div{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.lf-drawer button{border:0;border-radius:14px;cursor:pointer}.lf-drawer>div button{font-size:24px;background:#f1f5f9;padding:4px 10px}.lf-drawer>button{display:block;width:100%;padding:13px;margin:8px 0;text-align:left;border:1px solid #e2e8f0;background:#fff;font-weight:800}.lf-drawer>button.active{background:#0b5cff;color:white}.lf-drawer .logout{background:#fee2e2;color:#991b1b}.lf-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:30}@media(max-width:820px){.lf-shell{padding:12px}.lf-topbar h1{font-size:22px}.lf-ghost{display:none}.lf-metrics{grid-template-columns:repeat(2,1fr)}.lf-metric:first-child{grid-column:1/-1}.lf-grid2,.lf-grid3,.lf-billing-grid{grid-template-columns:1fr}.lf-head{align-items:stretch;flex-direction:column}.lf-hide-mobile{display:none}.lf-card{border-radius:20px;padding:15px}}@media(min-width:821px){.lf-menu-btn{display:none}.lf-hide-mobile{display:block!important}}
+  .lf-shell{max-width:1180px;margin:0 auto;padding:14px 14px 60px;color:#0f172a}.lf-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 0;background:rgba(246,248,251,.88);backdrop-filter:blur(12px)}.lf-topbar p,.lf-head p{margin:0;color:#2563eb;font-size:12px;font-weight:950;letter-spacing:.12em}.lf-topbar h1,.lf-head h2{margin:0}.lf-actions,.lf-row-actions{display:flex;gap:8px;flex-wrap:wrap}.lf-menu-btn,.lf-ghost,.lf-primary,.lf-mini{border:0;border-radius:14px;font-weight:850;cursor:pointer}.lf-menu-btn,.lf-primary{background:#0b5cff;color:white}.lf-menu-btn,.lf-ghost{padding:11px 14px}.lf-ghost{background:white;color:#0f172a;border:1px solid #dbe3ef}.lf-primary{padding:12px 15px}.lf-primary.big{font-size:16px;padding:15px}.lf-mini{background:#0b5cff;color:white;padding:8px 10px;font-size:12px;text-decoration:none}.lf-mini.link{display:inline-flex}.lf-mini.muted{background:#e2e8f0;color:#334155}.lf-mini.danger{background:#ef4444}.lf-notice{background:#ecfdf5;border:1px solid #bbf7d0;padding:12px 14px;border-radius:16px}.lf-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:8px 0 18px}.lf-metric,.lf-card,.lf-ai-box,.lf-section-edit{background:white;border:1px solid #e5edf7;border-radius:24px;box-shadow:0 12px 35px rgba(15,23,42,.06)}.lf-metric{padding:18px}.lf-metric span{display:block;color:#64748b}.lf-metric strong{display:block;margin-top:8px;font-size:25px}.lf-card{padding:18px;margin-bottom:18px}.lf-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.lf-builder{display:grid;gap:12px}.lf-ai-box{padding:16px;display:grid;gap:10px;background:#f8fbff}.lf-ai-box p{margin:0;color:#64748b;line-height:1.55}.lf-ai-box>div{display:grid;gap:8px}.lf-input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #dbe3ef;border-radius:14px;background:#fff;font-size:14px}.lf-input.tall,textarea.lf-input{min-height:96px}.lf-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.lf-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.lf-billing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.lf-section-groups{display:grid;gap:14px}.lf-section-group{background:#f8fbff;border:1px solid #e5edf7;border-radius:24px;padding:14px;display:grid;gap:10px}.lf-section-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.lf-section-group-head strong{font-size:15px;color:#0f172a}.lf-section-edit{padding:14px;display:grid;gap:9px}.lf-add-section{justify-self:start;background:#0b5cff}.lf-gallery-admin{display:flex;gap:8px;overflow-x:auto}.lf-gallery-admin img{height:86px;width:86px;object-fit:cover;border-radius:14px}.lf-mini-list{display:grid;gap:10px}.lf-mini-list>div{background:#fff;border:1px solid #e5edf7;border-radius:18px;padding:13px;display:grid;gap:6px}.lf-mini-list span{color:#64748b;font-size:13px}.lf-drawer{position:fixed;right:-320px;top:0;width:290px;max-width:82vw;height:100vh;background:#fff;z-index:40;box-shadow:-18px 0 50px rgba(15,23,42,.18);padding:18px;transition:.2s}.lf-drawer.open{right:0}.lf-drawer>div{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.lf-drawer button{border:0;border-radius:14px;cursor:pointer}.lf-drawer>div button{font-size:24px;background:#f1f5f9;padding:4px 10px}.lf-drawer>button{display:block;width:100%;padding:13px;margin:8px 0;text-align:left;border:1px solid #e2e8f0;background:#fff;font-weight:800}.lf-drawer>button.active{background:#0b5cff;color:white}.lf-drawer .logout{background:#fee2e2;color:#991b1b}.lf-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:30}.lf-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.52);z-index:60;display:grid;place-items:center;padding:18px}.lf-modal{width:min(520px,100%);background:#fff;border-radius:24px;padding:18px;box-shadow:0 30px 90px rgba(15,23,42,.25);display:grid;gap:12px}.lf-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.lf-modal-head h3{margin:0}.lf-modal-head button{border:0;background:#f1f5f9;border-radius:999px;width:34px;height:34px;font-size:20px;cursor:pointer}.lf-modal p{margin:0;color:#475569;line-height:1.65}.lf-modal ul{margin:0;padding-left:22px;color:#0f172a}.lf-loading-bar{height:9px;border-radius:999px;background:#e2e8f0;overflow:hidden}.lf-loading-bar span{display:block;height:100%;width:45%;border-radius:999px;background:#0b5cff;animation:lfLoad 1.2s ease-in-out infinite}@keyframes lfLoad{0%{transform:translateX(-120%)}100%{transform:translateX(240%)}}@media(max-width:820px){.lf-shell{padding:12px}.lf-topbar h1{font-size:22px}.lf-ghost{display:none}.lf-metrics{grid-template-columns:repeat(2,1fr)}.lf-metric:first-child{grid-column:1/-1}.lf-grid2,.lf-grid3,.lf-billing-grid{grid-template-columns:1fr}.lf-head{align-items:stretch;flex-direction:column}.lf-hide-mobile{display:none}.lf-card{border-radius:20px;padding:15px}}@media(min-width:821px){.lf-menu-btn{display:none}.lf-hide-mobile{display:block!important}}
 `}</style>}

@@ -4,7 +4,55 @@ import { api, SITE_URL, logout as doLogout } from '../../lib/api'
 import LanguageToggle from '../../components/LanguageToggle'
 import { useLanguage } from '../../lib/i18n'
 
-const emptySection = (type='PAIN', position=0) => ({ type, title:'', body:'', position, isHidden:false, translations:{} })
+const SECTION_ORDER = ['PAIN', 'SOLUTION', 'TRUST', 'OFFER', 'FAQ', 'CTA']
+const SECTION_GROUPS = [
+  { type: 'PAIN', labelKey: 'pain', addKey: 'addPain' },
+  { type: 'SOLUTION', labelKey: 'solution', addKey: 'addSolution' },
+  { type: 'TRUST', labelKey: 'trust', addKey: 'addTrust' },
+  { type: 'OFFER', labelKey: 'offer', addKey: 'addOffer' },
+  { type: 'FAQ', labelKey: 'faq', addKey: 'addFaq' },
+  { type: 'CTA', labelKey: 'ready', addKey: 'addCta' }
+]
+function normalizeSectionType(type = '') {
+  const value = String(type || '').trim().toUpperCase()
+  if (value === 'PROBLEM') return 'PAIN'
+  if (value === 'BENEFIT') return 'SOLUTION'
+  return SECTION_ORDER.includes(value) ? value : 'OFFER'
+}
+function sectionOrderValue(section) {
+  const idx = SECTION_ORDER.indexOf(normalizeSectionType(section?.type))
+  return idx === -1 ? SECTION_ORDER.length : idx
+}
+function normalizeSection(section = {}, position = 0) {
+  const type = normalizeSectionType(section.type)
+  return {
+    ...section,
+    type,
+    title: section.title || '',
+    body: section.body || '',
+    position,
+    isHidden: Boolean(section.isHidden),
+    translations: section.translations || {}
+  }
+}
+function orderSections(sections = []) {
+  return [...(sections || [])]
+    .map((section, i) => normalizeSection(section, Number.isFinite(section?.position) ? section.position : i))
+    .sort((a, b) => sectionOrderValue(a) - sectionOrderValue(b) || Number(a.position || 0) - Number(b.position || 0))
+    .map((section, position) => ({ ...section, position }))
+}
+function syncZhTranslation(section = {}) {
+  const translations = section.translations || {}
+  return {
+    ...section,
+    translations: {
+      ...translations,
+      title: { ...(translations.title || {}), zh: section.title || '' },
+      body: { ...(translations.body || {}), zh: section.body || '' }
+    }
+  }
+}
+const emptySection = (type='PAIN', position=0) => ({ type: normalizeSectionType(type), title:'', body:'', position, isHidden:false, translations:{} })
 const defaultProduct = () => ({
   id:'', name:'', headline:'', subheadline:'', description:'', sop:'', priceNote:'', imageUrl:'', heroImageUrl:'', videoUrl:'', galleryImages:[], translations:{}, isPublished:true, isHidden:false,
   sections:[
@@ -40,9 +88,40 @@ export default function MerchantPage() {
   useEffect(()=>{ if(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('billing') === 'return') setMsg(tr('returnedBilling')) },[tr])
 
   function patchProduct(patch){ setProduct(p=>({...p,...patch})) }
-  function patchSection(i, patch){ setProduct(p=>({...p,sections:p.sections.map((s,idx)=>idx===i?{...s,...patch}:s)})) }
-  function addSection(type='TEXT'){ setProduct(p=>({...p,sections:[...p.sections, emptySection(type, p.sections.length)]})) }
-  function removeSection(i){ setProduct(p=>({...p,sections:p.sections.filter((_,idx)=>idx!==i).map((s,idx)=>({...s,position:idx}))})) }
+  function patchSection(i, patch){
+    setProduct(p=>({
+      ...p,
+      sections: (p.sections || []).map((s,idx)=>{
+        if(idx !== i) return s
+        const next = { ...s, ...patch }
+        const translations = next.translations || {}
+        if (Object.prototype.hasOwnProperty.call(patch, 'title')) {
+          next.translations = { ...translations, title: { ...(translations.title || {}), zh: patch.title || '' } }
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'body')) {
+          next.translations = { ...(next.translations || translations), body: { ...(translations.body || {}), zh: patch.body || '' } }
+        }
+        return next
+      })
+    }))
+  }
+  function addSection(type='PAIN'){
+    const normalizedType = normalizeSectionType(type)
+    setProduct(p=>{
+      const current = orderSections(p.sections || [])
+      const next = emptySection(normalizedType, current.length)
+      const groupIndex = SECTION_ORDER.indexOf(normalizedType)
+      let insertAt = current.reduce((last, section, idx) => normalizeSectionType(section.type) === normalizedType ? idx + 1 : last, -1)
+      if (insertAt === -1) {
+        const laterIndex = current.findIndex(section => sectionOrderValue(section) > groupIndex)
+        insertAt = laterIndex === -1 ? current.length : laterIndex
+      }
+      const sections = [...current]
+      sections.splice(insertAt, 0, next)
+      return { ...p, sections: orderSections(sections) }
+    })
+  }
+  function removeSection(i){ setProduct(p=>({...p,sections:orderSections((p.sections || []).filter((_,idx)=>idx!==i))})) }
 
   async function uploadOne(file, key){ if(!file) return; setMsg(tr('uploading')); const fd=new FormData(); fd.append('file',file); const up=await api('/api/upload/media',{method:'POST',body:fd}); patchProduct({[key]:up.url}); setMsg(tr('uploaded')) }
   async function uploadGallery(files){ const list=Array.from(files||[]).slice(0,9); if(!list.length) return; setMsg(tr('uploadingGallery')); const fd=new FormData(); list.forEach(f=>fd.append('files',f)); const up=await api('/api/upload/images',{method:'POST',body:fd}); patchProduct({galleryImages:[...(product.galleryImages||[]),...(up.urls||[])].slice(0,9)}); setMsg(tr('galleryUploaded')) }
@@ -53,14 +132,14 @@ export default function MerchantPage() {
     try {
       const result = await api('/api/merchant/ai-generate', { method:'POST', body: JSON.stringify({ name: product.name, price: product.priceNote || aiInput.price, ...aiInput }) })
       const f = result.funnel || {}
-      const sections = (f.sections || []).map((sec, i) => ({
-        type: sec.type || 'TEXT',
+      const sections = orderSections((f.sections || []).map((sec, i) => ({
+        type: normalizeSectionType(sec.type || 'OFFER'),
         title: sec.title?.zh || sec.title?.en || sec.title?.bm || '',
         body: sec.body?.zh || sec.body?.en || sec.body?.bm || '',
         position: i,
         isHidden: false,
         translations: { title: sec.title || {}, body: sec.body || {} }
-      }))
+      })))
       setProduct(p => ({
         ...p,
         headline: f.headline?.zh || f.headline?.en || f.headline?.bm || p.headline,
@@ -75,8 +154,38 @@ export default function MerchantPage() {
     } catch (e) { setMsg(e.message) }
   }
 
-  async function saveProduct(e){ e.preventDefault(); setMsg(''); try{ const payload={...product, sections:product.sections.filter(s=>s.title.trim() || s.body.trim()).map((s,i)=>({...s,position:i}))}; if(product.id){ await api(`/api/merchant/product/${product.id}`,{method:'PUT',body:JSON.stringify(payload)}); setMsg(tr('skuUpdated')) } else { await api('/api/merchant/product',{method:'POST',body:JSON.stringify(payload)}); setMsg(tr('skuCreated')) } setProduct(defaultProduct()); setActivePanel('products'); await load() }catch(e){ setMsg(e.message) } }
-  function editProduct(p){ setProduct({...defaultProduct(),...p, translations:p.translations||{}, galleryImages:p.galleryImages||[], sections:p.sections?.length?p.sections.map(x=>({...x,translations:x.translations||{}})):defaultProduct().sections}); setActivePanel('builder'); window.scrollTo({top:0,behavior:'smooth'}) }
+  async function saveProduct(e){
+    e.preventDefault(); setMsg('')
+    try{
+      const sections = orderSections(product.sections || [])
+        .filter(s=>String(s.title || '').trim() || String(s.body || '').trim())
+        .map((s,i)=>syncZhTranslation({ ...s, type: normalizeSectionType(s.type), position:i }))
+      const payload={
+        ...product,
+        imageUrl: product.imageUrl || '',
+        heroImageUrl: product.heroImageUrl || '',
+        videoUrl: product.videoUrl || '',
+        galleryImages: Array.isArray(product.galleryImages) ? product.galleryImages.filter(Boolean) : [],
+        sections
+      }
+      if(product.id){ await api(`/api/merchant/product/${product.id}`,{method:'PUT',body:JSON.stringify(payload)}); setMsg(tr('skuUpdated')) }
+      else { await api('/api/merchant/product',{method:'POST',body:JSON.stringify(payload)}); setMsg(tr('skuCreated')) }
+      setProduct(defaultProduct()); setActivePanel('products'); await load()
+    }catch(e){ setMsg(e.message) }
+  }
+  function editProduct(p){
+    setProduct({
+      ...defaultProduct(),
+      ...p,
+      imageUrl:p.imageUrl || '',
+      heroImageUrl:p.heroImageUrl || '',
+      videoUrl:p.videoUrl || '',
+      translations:p.translations||{},
+      galleryImages:p.galleryImages||[],
+      sections:p.sections?.length?orderSections(p.sections.map(x=>({...x,translations:x.translations||{}}))):defaultProduct().sections
+    });
+    setActivePanel('builder'); window.scrollTo({top:0,behavior:'smooth'})
+  }
   async function toggleProduct(p){ setMsg(''); try{ await api(`/api/merchant/product/${p.id}/visibility`,{method:'PATCH',body:JSON.stringify({isHidden:!p.isHidden})}); setMsg(!p.isHidden?tr('productHidden'):tr('productShown')); load() }catch(e){ setMsg(e.message) } }
   async function deleteProduct(p){ if(!confirm(tr('confirmDeleteProduct', { name: p.name }))) return; try{ await api(`/api/merchant/product/${p.id}`,{method:'DELETE'}); setMsg(tr('productDeleted')); load() }catch(e){ setMsg(e.message) } }
   async function createLink(e){ e.preventDefault(); setMsg(''); try{ const result = await api('/api/merchant/promoter-links',{method:'POST',body:JSON.stringify({...link, promoterId: link.promoterId || undefined})}); setMsg(result.message || tr('promoterLinkCreated')); setActivePanel('promoters'); load() }catch(e){ setMsg(e.message) } }
@@ -122,8 +231,23 @@ export default function MerchantPage() {
         <div className="lf-grid3"><label>{tr('mainImage')}<input type="file" accept="image/*" onChange={e=>uploadOne(e.target.files?.[0],'imageUrl')}/></label><label>{tr('heroImage')}<input type="file" accept="image/*" onChange={e=>uploadOne(e.target.files?.[0],'heroImageUrl')}/></label><label>{tr('video')}<input type="file" accept="video/*" onChange={e=>uploadOne(e.target.files?.[0],'videoUrl')}/></label></div>
         <label>{tr('galleryImages')}<input type="file" accept="image/*" multiple onChange={e=>uploadGallery(e.target.files)}/></label>
         {!!product.galleryImages?.length && <div className="lf-gallery-admin">{product.galleryImages.map((img,i)=><img key={`${img}-${i}`} src={img} alt="" />)}</div>}
-        <div className="lf-head"><div><p>{tr('sectionContent')}</p></div><div className="lf-row-actions"><button type="button" className="lf-mini" onClick={()=>addSection('PAIN')}>{tr('addPain')}</button><button type="button" className="lf-mini" onClick={()=>addSection('SOLUTION')}>{tr('addSolution')}</button><button type="button" className="lf-mini" onClick={()=>addSection('TRUST')}>{tr('addTrust')}</button><button type="button" className="lf-mini" onClick={()=>addSection('OFFER')}>{tr('addOffer')}</button><button type="button" className="lf-mini" onClick={()=>addSection('FAQ')}>{tr('addFaq')}</button><button type="button" className="lf-mini" onClick={()=>addSection('CTA')}>{tr('addCta')}</button></div></div>
-        {product.sections.map((s,i)=><div key={i} className="lf-section-edit"><div className="lf-grid2"><input className="lf-input" placeholder={tr('sectionType')} value={s.type} onChange={e=>patchSection(i,{type:e.target.value})}/><input className="lf-input" placeholder={tr('sectionTitle')} value={s.title} onChange={e=>patchSection(i,{title:e.target.value})}/></div><textarea className="lf-input tall" placeholder={tr('sectionBody')} value={s.body} onChange={e=>patchSection(i,{body:e.target.value})}/><button type="button" className="lf-mini danger" onClick={()=>removeSection(i)}>{tr('remove')}</button></div>)}
+        <div className="lf-head"><div><p>{tr('sectionContent')}</p></div></div>
+        <div className="lf-section-groups">
+          {SECTION_GROUPS.map(group => {
+            const items = (product.sections || [])
+              .map((section, index) => ({ section, index }))
+              .filter(({ section }) => normalizeSectionType(section.type) === group.type)
+            return <div key={group.type} className="lf-section-group">
+              <div className="lf-section-group-head"><strong>{tr(group.labelKey)}</strong></div>
+              {items.map(({ section: s, index }) => <div key={`${group.type}-${index}`} className="lf-section-edit">
+                <input className="lf-input" placeholder={tr('sectionTitle')} value={s.title || ''} onChange={e=>patchSection(index,{title:e.target.value})}/>
+                <textarea className="lf-input tall" placeholder={tr('sectionBody')} value={s.body || ''} onChange={e=>patchSection(index,{body:e.target.value})}/>
+                <button type="button" className="lf-mini danger" onClick={()=>removeSection(index)}>{tr('remove')}</button>
+              </div>)}
+              <button type="button" className="lf-mini lf-add-section" onClick={()=>addSection(group.type)}>{tr(group.addKey)}</button>
+            </div>
+          })}
+        </div>
         <button className="lf-primary big">{tr('saveFunnel')}</button>
       </form>
     </section>
@@ -137,5 +261,5 @@ export default function MerchantPage() {
 }
 function Metric({label,value}){return <div className="lf-metric"><span>{label}</span><strong>{value}</strong></div>}
 function MerchantStyles(){return <style jsx global>{`
-  .lf-shell{max-width:1180px;margin:0 auto;padding:14px 14px 60px;color:#0f172a}.lf-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 0;background:rgba(246,248,251,.88);backdrop-filter:blur(12px)}.lf-topbar p,.lf-head p{margin:0;color:#2563eb;font-size:12px;font-weight:950;letter-spacing:.12em}.lf-topbar h1,.lf-head h2{margin:0}.lf-actions,.lf-row-actions{display:flex;gap:8px;flex-wrap:wrap}.lf-menu-btn,.lf-ghost,.lf-primary,.lf-mini{border:0;border-radius:14px;font-weight:850;cursor:pointer}.lf-menu-btn,.lf-primary{background:#0b5cff;color:white}.lf-menu-btn,.lf-ghost{padding:11px 14px}.lf-ghost{background:white;color:#0f172a;border:1px solid #dbe3ef}.lf-primary{padding:12px 15px}.lf-primary.big{font-size:16px;padding:15px}.lf-mini{background:#0b5cff;color:white;padding:8px 10px;font-size:12px;text-decoration:none}.lf-mini.link{display:inline-flex}.lf-mini.muted{background:#e2e8f0;color:#334155}.lf-mini.danger{background:#ef4444}.lf-notice{background:#ecfdf5;border:1px solid #bbf7d0;padding:12px 14px;border-radius:16px}.lf-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:8px 0 18px}.lf-metric,.lf-card,.lf-ai-box,.lf-section-edit{background:white;border:1px solid #e5edf7;border-radius:24px;box-shadow:0 12px 35px rgba(15,23,42,.06)}.lf-metric{padding:18px}.lf-metric span{display:block;color:#64748b}.lf-metric strong{display:block;margin-top:8px;font-size:25px}.lf-card{padding:18px;margin-bottom:18px}.lf-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.lf-builder{display:grid;gap:12px}.lf-ai-box{padding:16px;display:grid;gap:10px;background:#f8fbff}.lf-ai-box p{margin:0;color:#64748b;line-height:1.55}.lf-ai-box>div{display:grid;gap:8px}.lf-input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #dbe3ef;border-radius:14px;background:#fff;font-size:14px}.lf-input.tall,textarea.lf-input{min-height:96px}.lf-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.lf-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.lf-billing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.lf-section-edit{padding:14px;display:grid;gap:9px}.lf-gallery-admin{display:flex;gap:8px;overflow-x:auto}.lf-gallery-admin img{height:86px;width:86px;object-fit:cover;border-radius:14px}.lf-mini-list{display:grid;gap:10px}.lf-mini-list>div{background:#fff;border:1px solid #e5edf7;border-radius:18px;padding:13px;display:grid;gap:6px}.lf-mini-list span{color:#64748b;font-size:13px}.lf-drawer{position:fixed;right:-320px;top:0;width:290px;max-width:82vw;height:100vh;background:#fff;z-index:40;box-shadow:-18px 0 50px rgba(15,23,42,.18);padding:18px;transition:.2s}.lf-drawer.open{right:0}.lf-drawer>div{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.lf-drawer button{border:0;border-radius:14px;cursor:pointer}.lf-drawer>div button{font-size:24px;background:#f1f5f9;padding:4px 10px}.lf-drawer>button{display:block;width:100%;padding:13px;margin:8px 0;text-align:left;border:1px solid #e2e8f0;background:#fff;font-weight:800}.lf-drawer>button.active{background:#0b5cff;color:white}.lf-drawer .logout{background:#fee2e2;color:#991b1b}.lf-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:30}@media(max-width:820px){.lf-shell{padding:12px}.lf-topbar h1{font-size:22px}.lf-ghost{display:none}.lf-metrics{grid-template-columns:repeat(2,1fr)}.lf-metric:first-child{grid-column:1/-1}.lf-grid2,.lf-grid3,.lf-billing-grid{grid-template-columns:1fr}.lf-head{align-items:stretch;flex-direction:column}.lf-hide-mobile{display:none}.lf-card{border-radius:20px;padding:15px}}@media(min-width:821px){.lf-menu-btn{display:none}.lf-hide-mobile{display:block!important}}
+  .lf-shell{max-width:1180px;margin:0 auto;padding:14px 14px 60px;color:#0f172a}.lf-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 0;background:rgba(246,248,251,.88);backdrop-filter:blur(12px)}.lf-topbar p,.lf-head p{margin:0;color:#2563eb;font-size:12px;font-weight:950;letter-spacing:.12em}.lf-topbar h1,.lf-head h2{margin:0}.lf-actions,.lf-row-actions{display:flex;gap:8px;flex-wrap:wrap}.lf-menu-btn,.lf-ghost,.lf-primary,.lf-mini{border:0;border-radius:14px;font-weight:850;cursor:pointer}.lf-menu-btn,.lf-primary{background:#0b5cff;color:white}.lf-menu-btn,.lf-ghost{padding:11px 14px}.lf-ghost{background:white;color:#0f172a;border:1px solid #dbe3ef}.lf-primary{padding:12px 15px}.lf-primary.big{font-size:16px;padding:15px}.lf-mini{background:#0b5cff;color:white;padding:8px 10px;font-size:12px;text-decoration:none}.lf-mini.link{display:inline-flex}.lf-mini.muted{background:#e2e8f0;color:#334155}.lf-mini.danger{background:#ef4444}.lf-notice{background:#ecfdf5;border:1px solid #bbf7d0;padding:12px 14px;border-radius:16px}.lf-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:8px 0 18px}.lf-metric,.lf-card,.lf-ai-box,.lf-section-edit{background:white;border:1px solid #e5edf7;border-radius:24px;box-shadow:0 12px 35px rgba(15,23,42,.06)}.lf-metric{padding:18px}.lf-metric span{display:block;color:#64748b}.lf-metric strong{display:block;margin-top:8px;font-size:25px}.lf-card{padding:18px;margin-bottom:18px}.lf-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.lf-builder{display:grid;gap:12px}.lf-ai-box{padding:16px;display:grid;gap:10px;background:#f8fbff}.lf-ai-box p{margin:0;color:#64748b;line-height:1.55}.lf-ai-box>div{display:grid;gap:8px}.lf-input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #dbe3ef;border-radius:14px;background:#fff;font-size:14px}.lf-input.tall,textarea.lf-input{min-height:96px}.lf-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.lf-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.lf-billing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.lf-section-groups{display:grid;gap:14px}.lf-section-group{background:#f8fbff;border:1px solid #e5edf7;border-radius:24px;padding:14px;display:grid;gap:10px}.lf-section-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.lf-section-group-head strong{font-size:15px;color:#0f172a}.lf-section-edit{padding:14px;display:grid;gap:9px}.lf-add-section{justify-self:start;background:#0b5cff}.lf-gallery-admin{display:flex;gap:8px;overflow-x:auto}.lf-gallery-admin img{height:86px;width:86px;object-fit:cover;border-radius:14px}.lf-mini-list{display:grid;gap:10px}.lf-mini-list>div{background:#fff;border:1px solid #e5edf7;border-radius:18px;padding:13px;display:grid;gap:6px}.lf-mini-list span{color:#64748b;font-size:13px}.lf-drawer{position:fixed;right:-320px;top:0;width:290px;max-width:82vw;height:100vh;background:#fff;z-index:40;box-shadow:-18px 0 50px rgba(15,23,42,.18);padding:18px;transition:.2s}.lf-drawer.open{right:0}.lf-drawer>div{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.lf-drawer button{border:0;border-radius:14px;cursor:pointer}.lf-drawer>div button{font-size:24px;background:#f1f5f9;padding:4px 10px}.lf-drawer>button{display:block;width:100%;padding:13px;margin:8px 0;text-align:left;border:1px solid #e2e8f0;background:#fff;font-weight:800}.lf-drawer>button.active{background:#0b5cff;color:white}.lf-drawer .logout{background:#fee2e2;color:#991b1b}.lf-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:30}@media(max-width:820px){.lf-shell{padding:12px}.lf-topbar h1{font-size:22px}.lf-ghost{display:none}.lf-metrics{grid-template-columns:repeat(2,1fr)}.lf-metric:first-child{grid-column:1/-1}.lf-grid2,.lf-grid3,.lf-billing-grid{grid-template-columns:1fr}.lf-head{align-items:stretch;flex-direction:column}.lf-hide-mobile{display:none}.lf-card{border-radius:20px;padding:15px}}@media(min-width:821px){.lf-menu-btn{display:none}.lf-hide-mobile{display:block!important}}
 `}</style>}

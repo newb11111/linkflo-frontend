@@ -9,8 +9,8 @@ export default function LoginPage() {
   const { tr } = useLanguage()
   const [mode, setMode] = useState('login')
   const [selectedPlan, setSelectedPlan] = useState('STARTER')
-  const [email, setEmail] = useState('admin@linkflo.local')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [brandName, setBrandName] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
@@ -25,7 +25,7 @@ export default function LoginPage() {
     if (m === 'register') {
       setMode('register')
       setEmail('')
-      setPassword('merchant123')
+      setPassword('')
     } else if (m === 'merchant') {
       setEmail('')
       setPassword('')
@@ -71,7 +71,6 @@ export default function LoginPage() {
       {mode === 'register' && <div style={info}>{tr('registerInfo')}</div>}
       {error && <p style={{ color: '#dc2626' }}>{error}</p>}
       <button disabled={loading} style={btn}>{loading ? tr('processing') : mode === 'register' ? tr('registerAndTopup') : tr('login')}</button>
-      <p style={{fontSize:13,color:'#64748b'}}>{tr('adminHint')}</p>
     </form>
   </main>
 }

@@ -110,6 +110,7 @@ export default function MerchantPage() {
   const [link, setLink] = useState({ productId:'', promoterName:'', promoterPhone:'', promoterId:'' })
   const [aiInput, setAiInput] = useState({ industry:'', targetCustomer:'', keyPoints:'', painPoints:'', proof:'', offer:'', price:'' })
   const [aiModal, setAiModal] = useState(null)
+  const [isAiGenerating, setIsAiGenerating] = useState(false)
   const [profileForm, setProfileForm] = useState({ ownerName:'', brandName:'', whatsapp:'', email:'' })
 
   async function guard(){ try{ const me = await api('/api/auth/me'); if(me.role !== 'MERCHANT'){ window.location.href='/admin'; return false } return true } catch(e){ window.location.href='/login'; return false } }
@@ -181,12 +182,14 @@ export default function MerchantPage() {
   }
 
   async function generateFunnel() {
+    if (isAiGenerating) return
     const missing = aiRequiredMissing()
     if (missing.length) {
       setAiModal({ type:'missing', title:tr('aiRequiredTitle'), body:tr('aiRequiredIntro'), lines:missing })
       setMsg(tr('aiRequiredTitle'))
       return
     }
+    setIsAiGenerating(true)
     setAiModal({ type:'loading', title:tr('aiGeneratingTitle'), body:tr('aiGeneratingBody') })
     setMsg(tr('aiGenerating'))
     try {
@@ -215,6 +218,8 @@ export default function MerchantPage() {
     } catch (e) {
       setAiModal({ type:'error', title:tr('aiFailTitle'), body:e.message || tr('aiFailBody') })
       setMsg(e.message)
+    } finally {
+      setIsAiGenerating(false)
     }
   }
 
@@ -307,7 +312,7 @@ export default function MerchantPage() {
 
     <section className={`lf-card ${activePanel==='builder'?'':'lf-hide-mobile'}`}><div className="lf-head"><div><p>{tr('builderV2')}</p><h2>{product.id?tr('builderTitleEdit'):tr('builderTitleCreate')}</h2></div><button className="lf-mini muted" onClick={()=>setProduct(defaultProduct())}>{tr('resetForm')}</button></div>
       <form onSubmit={saveProduct} className="lf-builder">
-        <div className="lf-ai-box"><b>{tr('aiGenerateTitle')}</b><p>{tr('aiGenerateDesc')}</p><p>{tr('autoTranslateNote')}</p><div><input className="lf-input" placeholder={tr('industryPlaceholder')} value={aiInput.industry} onChange={e=>setAiInput({...aiInput,industry:e.target.value})}/><input className="lf-input" placeholder={tr('targetCustomer')} value={aiInput.targetCustomer} onChange={e=>setAiInput({...aiInput,targetCustomer:e.target.value})}/><textarea className="lf-input" placeholder={tr('keyPoints')} value={aiInput.keyPoints} onChange={e=>setAiInput({...aiInput,keyPoints:e.target.value})}/><textarea className="lf-input" placeholder={tr('painPoints')} value={aiInput.painPoints} onChange={e=>setAiInput({...aiInput,painPoints:e.target.value})}/><textarea className="lf-input" placeholder={tr('proof')} value={aiInput.proof} onChange={e=>setAiInput({...aiInput,proof:e.target.value})}/><input className="lf-input" placeholder={tr('offerPlaceholder')} value={aiInput.offer} onChange={e=>setAiInput({...aiInput,offer:e.target.value})}/></div><button type="button" className="lf-primary" onClick={generateFunnel}>{tr('aiGenerate')}</button></div>
+        <div className="lf-ai-box"><b>{tr('aiGenerateTitle')}</b><p>{tr('aiGenerateDesc')}</p><p>{tr('autoTranslateNote')}</p><div><input className="lf-input" placeholder={tr('industryPlaceholder')} value={aiInput.industry} onChange={e=>setAiInput({...aiInput,industry:e.target.value})}/><input className="lf-input" placeholder={tr('targetCustomer')} value={aiInput.targetCustomer} onChange={e=>setAiInput({...aiInput,targetCustomer:e.target.value})}/><textarea className="lf-input" placeholder={tr('keyPoints')} value={aiInput.keyPoints} onChange={e=>setAiInput({...aiInput,keyPoints:e.target.value})}/><textarea className="lf-input" placeholder={tr('painPoints')} value={aiInput.painPoints} onChange={e=>setAiInput({...aiInput,painPoints:e.target.value})}/><textarea className="lf-input" placeholder={tr('proof')} value={aiInput.proof} onChange={e=>setAiInput({...aiInput,proof:e.target.value})}/><input className="lf-input" placeholder={tr('offerPlaceholder')} value={aiInput.offer} onChange={e=>setAiInput({...aiInput,offer:e.target.value})}/></div><button type="button" className="lf-primary" onClick={generateFunnel} disabled={isAiGenerating}>{isAiGenerating ? tr('aiGenerating') : tr('aiGenerate')}</button></div>
         <div className="lf-grid2"><div><label>{tr('productName')}</label><input className="lf-input" value={product.name} onChange={e=>patchProduct({name:e.target.value})}/></div><div><label>{tr('priceNote')}</label><input className="lf-input" value={product.priceNote} onChange={e=>patchProduct({priceNote:e.target.value})}/></div></div>
         <label>{tr('heroHeadline')}</label><input className="lf-input" value={product.headline} onChange={e=>patchProduct({headline:e.target.value})}/>
         <label>{tr('subheadline')}</label><textarea className="lf-input" value={product.subheadline||''} onChange={e=>patchProduct({subheadline:e.target.value})}/>

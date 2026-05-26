@@ -39,15 +39,21 @@ async function ensureMonthlyBilling(db, merchant) {
   }
 
   return db.$transaction(async tx => {
-    const updated = await tx.merchant.update({
-      where: { id: merchant.id },
+    const debit = await tx.merchant.updateMany({
+      where: { id: merchant.id, creditBalance: { gte: cost } },
       data: {
-        creditBalance: roundCredit(current - cost),
+        creditBalance: { decrement: cost },
         planStatus: 'ACTIVE',
         lastMonthlyChargeAt: now,
         nextBillingAt: addOneMonth(nextBillingAt)
       }
     })
+    if (debit.count !== 1) {
+      return tx.merchant.update({
+        where: { id: merchant.id },
+        data: { planStatus: 'PAST_DUE', nextBillingAt }
+      })
+    }
     await tx.billingTransaction.create({
       data: {
         merchantId: merchant.id,
@@ -56,10 +62,10 @@ async function ensureMonthlyBilling(db, merchant) {
         amount: cost,
         creditAmount: -cost,
         status: 'PAID',
-        rawPayload: { autoMonthlyDeduct: true, chargedAt: now.toISOString() }
+        rawPayload: { autoMonthlyDeduct: true, chargedAt: now.toISOString(), atomicDebit: true }
       }
     })
-    return updated
+    return tx.merchant.findUnique({ where: { id: merchant.id }, include: { user: true } })
   })
 }
 
@@ -163,7 +169,7 @@ router.post('/merchant/apply-credit', async (req, res, next) => {
     }
 
     const result = await prisma.$transaction(async db => {
-      const data = { creditBalance: roundCredit(Number(merchant.creditBalance || 0) - cost), planStatus: 'ACTIVE' }
+      const data = { creditBalance: { decrement: cost }, planStatus: 'ACTIVE' }
       if (body.type === 'PLAN_CHANGE') {
         data.plan = body.plan
         data.nextBillingAt = addOneMonth(new Date())
@@ -171,7 +177,16 @@ router.post('/merchant/apply-credit', async (req, res, next) => {
       }
       if (body.type === 'SKU_CREDIT') data.extraSkuCredits = { increment: body.skuCredits || 1 }
 
-      const updated = await db.merchant.update({ where: { id: merchant.id }, data })
+      const debit = await db.merchant.updateMany({
+        where: { id: merchant.id, creditBalance: { gte: cost } },
+        data
+      })
+      if (debit.count !== 1) {
+        const err = new Error(`Credit 不足。需要 RM${cost} credit，目前只有 RM${roundCredit(merchant.creditBalance || 0)}。请先充值。`)
+        err.status = 402
+        err.needTopup = true
+        throw err
+      }
       const tx = await db.billingTransaction.create({
         data: {
           merchantId: merchant.id,
@@ -181,9 +196,10 @@ router.post('/merchant/apply-credit', async (req, res, next) => {
           amount: cost,
           creditAmount: -cost,
           status: 'PAID',
-          rawPayload: { description, paidByCredit: true }
+          rawPayload: { description, paidByCredit: true, atomicDebit: true }
         }
       })
+      const updated = await db.merchant.findUnique({ where: { id: merchant.id } })
       return { tx, merchant: updated }
     })
 
@@ -268,12 +284,15 @@ router.post('/billplz-callback', async (req, res, next) => {
     }
 
     await prisma.$transaction(async db => {
-      await db.billingTransaction.update({ where: { id: tx.id }, data: { status: 'PAID', rawPayload: payload } })
+      const paidTx = await db.billingTransaction.updateMany({
+        where: { id: tx.id, status: { not: 'PAID' } },
+        data: { status: 'PAID', rawPayload: payload }
+      })
+      if (paidTx.count !== 1) return
       if (tx.merchantId && tx.type === 'CREDIT_TOPUP' && Number(tx.creditAmount) > 0) {
-        const merchant = await db.merchant.findUnique({ where: { id: tx.merchantId } })
         await db.merchant.update({
           where: { id: tx.merchantId },
-          data: { creditBalance: roundCredit(Number(merchant.creditBalance || 0) + Number(tx.creditAmount || 0)), planStatus: 'ACTIVE' }
+          data: { creditBalance: { increment: Number(tx.creditAmount || 0) }, planStatus: 'ACTIVE' }
         })
       }
     })

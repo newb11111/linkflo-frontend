@@ -328,8 +328,25 @@ ${JSON.stringify(body)}`
     if (!validateFunnelShape(parsed)) return res.status(502).json({ message: 'AI 回传内容不完整，本次不会扣 credit。请再试一次。' })
 
     await prisma.$transaction(async tx => {
-      await tx.merchant.update({ where: { id: merchant.id }, data: { creditBalance: roundCredit(Number(merchant.creditBalance || 0) - AI_GENERATE_COST) } })
-      await tx.billingTransaction.create({ data: { merchantId: merchant.id, type: 'AI_GENERATE', amount: AI_GENERATE_COST, creditAmount: -AI_GENERATE_COST, status: 'PAID', rawPayload: { source: 'openai' } } })
+      const debit = await tx.merchant.updateMany({
+        where: { id: merchant.id, creditBalance: { gte: AI_GENERATE_COST } },
+        data: { creditBalance: { decrement: AI_GENERATE_COST } }
+      })
+      if (debit.count !== 1) {
+        const err = new Error(`Credit 不足。AI Generate 需要 ${AI_GENERATE_COST} credit，请先充值。`)
+        err.status = 402
+        throw err
+      }
+      await tx.billingTransaction.create({
+        data: {
+          merchantId: merchant.id,
+          type: 'AI_GENERATE',
+          amount: AI_GENERATE_COST,
+          creditAmount: -AI_GENERATE_COST,
+          status: 'PAID',
+          rawPayload: { source: 'openai', atomicDebit: true }
+        }
+      })
     })
     res.json({ source: 'openai', funnel: parsed })
   } catch (err) { next(err) }

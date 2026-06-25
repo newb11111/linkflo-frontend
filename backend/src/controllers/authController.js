@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { z } = require('zod')
 const prisma = require('../lib/prisma')
+const { generateReferralCode } = require('../lib/referral')
+const { adjustCredit, ensureDefaultLevelSettings } = require('../lib/wallet')
 
 const loginSchema = z.object({
   email: z.string().email().transform(v => v.trim().toLowerCase()),
@@ -138,13 +140,24 @@ exports.registerMerchant = async (req, res, next) => {
       name: z.string().min(1),
       brandName: z.string().min(1),
       whatsapp: z.string().min(8).transform(v => v.replace(/\D/g, '')),
-      plan: z.enum(['STARTER', 'GROWTH', 'SCALE']).default('STARTER')
+      referralCode: z.string().max(40).optional().nullable(),
+      plan: z.enum(['STARTER', 'GROWTH', 'SCALE']).optional()
     }).parse(req.body)
 
     const exists = await prisma.user.findUnique({ where: { email: body.email } })
     if (exists) return res.status(409).json({ message: '这个 email 已经注册，请直接登录。' })
 
+    await ensureDefaultLevelSettings(prisma)
+
+    let referrer = null
+    const inputReferral = String(body.referralCode || '').trim().toUpperCase()
+    if (inputReferral) {
+      referrer = await prisma.merchant.findFirst({ where: { referralCode: inputReferral } })
+    }
+
     const password = await bcrypt.hash(body.password, 10)
+    const referralCode = await generateReferralCode(prisma)
+
     const user = await prisma.user.create({
       data: {
         email: body.email,
@@ -157,14 +170,52 @@ exports.registerMerchant = async (req, res, next) => {
             whatsapp: body.whatsapp,
             plan: 'STARTER',
             creditBalance: 0,
+            bonusCreditBalance: 20,
             extraSkuCredits: 0,
-            planStatus: 'ACTIVE',
-            nextBillingAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            planStatus: 'INACTIVE',
+            nextBillingAt: null,
+            memberStatus: 'ACTIVE',
+            memberTier: 'UNVERIFIED',
+            kycStatus: 'UNVERIFIED',
+            referralCode,
+            referredById: referrer?.id || null
           }
         }
       },
       include: { merchant: true }
     })
+
+    await prisma.creditLedger.create({
+      data: {
+        merchantId: user.merchant.id,
+        bucket: 'BONUS',
+        direction: 'CREDIT',
+        amount: 20,
+        balanceBefore: 0,
+        balanceAfter: 20,
+        category: 'WELCOME_BONUS',
+        note: 'Free member welcome bonus credit'
+      }
+    })
+
+    if (referrer && referrer.id !== user.merchant.id) {
+      await prisma.referralEvent.create({
+        data: {
+          referrerMerchantId: referrer.id,
+          referredMerchantId: user.merchant.id,
+          eventType: 'REGISTER',
+          rewardStatus: 'APPROVED',
+          rewardCredit: 20
+        }
+      })
+      await adjustCredit({
+        merchantId: referrer.id,
+        bucket: 'BONUS',
+        amount: 20,
+        category: 'REFERRAL_REGISTER',
+        note: `Referral register reward for ${body.email}`
+      })
+    }
 
     const token = signUser(user)
     const isProd = process.env.NODE_ENV === 'production'
@@ -177,14 +228,15 @@ exports.registerMerchant = async (req, res, next) => {
 
     res.status(201).json({
       token,
-      selectedPlan: body.plan,
-      message: 'Merchant 注册成功。接下来请充值 credit，再确认购买配套。',
+      selectedPlan: body.plan || null,
+      message: 'Linkflo Member 注册成功。你已获得 20 Bonus Credit，AI Funnel 需要在 Member Dashboard 里面开通。',
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
-        merchantId: user.merchant?.id || null
+        merchantId: user.merchant?.id || null,
+        referralCode: user.merchant?.referralCode || null
       }
     })
   } catch (err) { next(err) }

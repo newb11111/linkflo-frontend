@@ -35,6 +35,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, api: 'running', env: p
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/admin', require('./routes/admin'))
 app.use('/api/merchant', require('./routes/merchant'))
+app.use('/api/member', require('./routes/member'))
 app.use('/api/public', require('./routes/public'))
 app.use('/api/upload', require('./routes/upload'))
 app.use('/api/billing', require('./routes/billing'))

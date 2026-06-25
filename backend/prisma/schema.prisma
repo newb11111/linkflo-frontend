@@ -36,17 +36,38 @@ model Merchant {
   brandName           String
   whatsapp            String
   plan                PlanCode  @default(STARTER)
-  planStatus          String    @default("ACTIVE")
+  planStatus          String    @default("INACTIVE")
   nextBillingAt       DateTime?
   lastMonthlyChargeAt DateTime?
   isHidden            Boolean   @default(false)
   extraSkuCredits     Int       @default(0)
+
+  // Paid credit = user topup / admin paid credit. Bonus credit = referral / campaign / social mission reward.
   creditBalance       Float     @default(0)
+  bonusCreditBalance  Float     @default(0)
+
+  // Member / Ambassador layer. Database name remains Merchant for safer migration, UI shows Member.
+  memberStatus        String    @default("ACTIVE")
+  memberTier          String    @default("UNVERIFIED") // UNVERIFIED / VERIFIED / GOLD / DIAMOND
+  kycStatus           String    @default("UNVERIFIED") // UNVERIFIED / PENDING / VERIFIED / REJECTED
+  referralCode        String?   @unique
+  referredById        String?
+  monthlyPostCount    Int       @default(0)
+  tierGraceCount      Int       @default(0)
+  lastTierCheckedAt   DateTime?
+
   products            Product[]
   links               PromoterLink[]
   billingTransactions BillingTransaction[]
+  creditLedgers       CreditLedger[]
+  subscriptions       MemberProductSubscription[]
+  socialProofs        SocialProofSubmission[]
+  kycSubmissions      KycSubmission[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  @@index([memberTier, kycStatus, memberStatus])
+  @@index([referredById])
 }
 
 model Product {
@@ -137,4 +158,161 @@ model BillingTransaction {
   rawPayload   Json?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+model CreditLedger {
+  id               String    @id @default(cuid())
+  merchantId       String
+  merchant         Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  bucket           String    // PAID / BONUS
+  direction        String    // CREDIT / DEBIT
+  amount           Float
+  balanceBefore    Float
+  balanceAfter     Float
+  category         String
+  referenceType    String?
+  referenceId      String?
+  note             String?
+  createdByAdminId String?
+  createdAt        DateTime  @default(now())
+
+  @@index([merchantId, bucket, createdAt])
+  @@index([category, createdAt])
+}
+
+model ProductStoreItem {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  name            String
+  type            String   @default("SERVICE") // FUNNEL_PLAN / SERVICE / ACADEMY / ADDON
+  price           Float
+  billingType     String   @default("ONE_TIME") // ONE_TIME / MONTHLY
+  bonusAllowed    Boolean  @default(true)
+  normalBonusCap  Float    @default(0.30)
+  goldBonusCap    Float    @default(0.40)
+  diamondBonusCap Float    @default(0.50)
+  isActive        Boolean  @default(true)
+  description     String?
+  sortOrder       Int      @default(0)
+  subscriptions   MemberProductSubscription[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MemberProductSubscription {
+  id            String            @id @default(cuid())
+  merchantId    String
+  merchant      Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  productItemId String?
+  productItem   ProductStoreItem? @relation(fields: [productItemId], references: [id], onDelete: SetNull)
+  productCode   String
+  planCode      PlanCode?
+  status        String            @default("ACTIVE") // ACTIVE / PAST_DUE / CANCELLED / COMPLETED
+  monthlyPrice  Float             @default(0)
+  nextBillingAt DateTime?
+  startedAt     DateTime          @default(now())
+  cancelledAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([merchantId, productCode, status])
+}
+
+model MarketingMaterial {
+  id          String   @id @default(cuid())
+  title       String
+  type        String   @default("IMAGE") // IMAGE / VIDEO / CAPTION / WHATSAPP
+  platform    String   @default("ALL")
+  language    String   @default("ZH")
+  fileUrl     String?
+  caption     String?
+  campaignId  String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MonthlyCampaign {
+  id                   String   @id @default(cuid())
+  title                String
+  month                String
+  startAt              DateTime?
+  endAt                DateTime?
+  goldRequiredPosts    Int      @default(4)
+  diamondRequiredPosts Int      @default(8)
+  storyRewardCredit    Float    @default(3)
+  postRewardCredit     Float    @default(5)
+  videoRewardCredit    Float    @default(10)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model SocialProofSubmission {
+  id             String    @id @default(cuid())
+  merchantId     String
+  merchant       Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  campaignId     String?
+  materialId     String?
+  platform       String
+  postType       String    // STORY / POST / VIDEO / STATUS
+  proofImageUrl  String?
+  postUrl        String?
+  caption        String?
+  status         String    @default("PENDING") // PENDING / APPROVED / REJECTED
+  rewardCredit   Float     @default(0)
+  adminNote      String?
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([merchantId, status, createdAt])
+}
+
+model ReferralEvent {
+  id                 String   @id @default(cuid())
+  referrerMerchantId String
+  referredMerchantId String?
+  eventType          String   // REGISTER / PURCHASE
+  rewardStatus       String   @default("PENDING") // PENDING / APPROVED / REVERSED
+  rewardCredit       Float    @default(0)
+  orderAmount        Float    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([referrerMerchantId, eventType, createdAt])
+}
+
+model KycSubmission {
+  id             String    @id @default(cuid())
+  merchantId     String
+  merchant       Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  fullName       String
+  icNumber       String?
+  phone          String?
+  socialProfile  String?
+  icFrontUrl     String?
+  icBackUrl      String?
+  selfieUrl      String?
+  status         String    @default("PENDING") // PENDING / APPROVED / REJECTED
+  adminNote      String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([merchantId, status, createdAt])
+}
+
+model AmbassadorLevelSetting {
+  id                   String   @id @default(cuid())
+  tier                 String   @unique // UNVERIFIED / VERIFIED / GOLD / DIAMOND
+  label                String
+  bonusCap             Float
+  kycRequired          Boolean  @default(false)
+  monthlyPostRequired  Int      @default(0)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }

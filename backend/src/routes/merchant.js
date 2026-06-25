@@ -6,6 +6,7 @@ const { customAlphabet } = require('nanoid')
 const prisma = require('../lib/prisma')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { getPlan } = require('../lib/plans')
+const { writeLedger, roundCredit: roundWalletCredit } = require('../lib/wallet')
 
 const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 6)
 router.use(requireAuth, requireRole('MERCHANT'))
@@ -73,6 +74,16 @@ async function getMerchant(req) {
 
 function roundCredit(value) { return Math.round(Number(value || 0) * 10) / 10 }
 const AI_GENERATE_COST = 0.1
+
+
+function ensureFunnelActive(merchant) {
+  if (merchant.planStatus !== 'ACTIVE') {
+    const err = new Error('你还没有开通 AI Funnel。请先到 Member Dashboard 用 credit 开通 Funnel 产品。')
+    err.status = 402
+    err.needActivateFunnel = true
+    throw err
+  }
+}
 
 
 function stripJsonFence(text = '') {
@@ -237,6 +248,7 @@ router.put('/profile', async (req, res, next) => {
 router.post('/product', async (req, res, next) => {
   try {
     const merchant = await getMerchant(req)
+    ensureFunnelActive(merchant)
     const existingProducts = await prisma.product.count({ where: { merchantId: merchant.id } })
     const skuLimit = 1 + merchant.extraSkuCredits
     if (existingProducts >= skuLimit) return res.status(403).json({ message: `目前可创建 ${skuLimit} 个 SKU。增加 SKU：一次性 +RM100 / SKU，请联系 Admin 开通。` })
@@ -254,6 +266,7 @@ router.post('/product', async (req, res, next) => {
 router.put('/product/:id', async (req, res, next) => {
   try {
     const merchant = await getMerchant(req)
+    ensureFunnelActive(merchant)
     const product = await prisma.product.findFirst({ where: { id: req.params.id, merchantId: merchant.id } })
     if (!product) return res.status(404).json({ message: 'Product not found' })
     const body = z.object({ name: z.string().min(1).optional(), headline: z.string().min(1).optional(), subheadline: z.string().optional(), description: z.string().optional(), sop: z.string().optional(), priceNote: z.string().optional(), imageUrl: urlOrEmptySchema, heroImageUrl: urlOrEmptySchema, videoUrl: stringOrEmptySchema, galleryImages: galleryOptionalSchema, translations: translationsSchema.optional(), isPublished: z.boolean().optional(), isHidden: z.boolean().optional(), sections: z.array(z.object({ type: z.string().default('TEXT'), title: z.string().min(1), body: z.string().min(1), position: z.number().int().default(0), isHidden: z.boolean().default(false), translations: sectionTranslationsSchema.default({}) })).optional() }).parse(req.body)
@@ -275,6 +288,7 @@ router.put('/product/:id', async (req, res, next) => {
 router.post('/ai-generate', async (req, res, next) => {
   try {
     const merchant = await getMerchant(req)
+    ensureFunnelActive(merchant)
     if (!process.env.OPENAI_API_KEY) return res.status(503).json({ message: 'AI 暂时未开启，请先在 backend/.env 填 OPENAI_API_KEY。本次不会扣 credit。' })
     if (Number(merchant.creditBalance || 0) < AI_GENERATE_COST) return res.status(402).json({ message: `Credit 不足。AI Generate 需要 ${AI_GENERATE_COST} credit，请先充值。`, needTopup: true })
     const body = z.object({
@@ -328,16 +342,18 @@ ${JSON.stringify(body)}`
     if (!validateFunnelShape(parsed)) return res.status(502).json({ message: 'AI 回传内容不完整，本次不会扣 credit。请再试一次。' })
 
     await prisma.$transaction(async tx => {
+      const before = roundWalletCredit(merchant.creditBalance || 0)
+      const after = roundWalletCredit(before - AI_GENERATE_COST)
       const debit = await tx.merchant.updateMany({
         where: { id: merchant.id, creditBalance: { gte: AI_GENERATE_COST } },
-        data: { creditBalance: { decrement: AI_GENERATE_COST } }
+        data: { creditBalance: after }
       })
       if (debit.count !== 1) {
         const err = new Error(`Credit 不足。AI Generate 需要 ${AI_GENERATE_COST} credit，请先充值。`)
         err.status = 402
         throw err
       }
-      await tx.billingTransaction.create({
+      const bt = await tx.billingTransaction.create({
         data: {
           merchantId: merchant.id,
           type: 'AI_GENERATE',
@@ -346,6 +362,18 @@ ${JSON.stringify(body)}`
           status: 'PAID',
           rawPayload: { source: 'openai', atomicDebit: true }
         }
+      })
+      await writeLedger(tx, {
+        merchantId: merchant.id,
+        bucket: 'PAID',
+        direction: 'DEBIT',
+        amount: AI_GENERATE_COST,
+        balanceBefore: before,
+        balanceAfter: after,
+        category: 'AI_GENERATE',
+        referenceType: 'BillingTransaction',
+        referenceId: bt.id,
+        note: 'AI funnel generation cost'
       })
     })
     res.json({ source: 'openai', funnel: parsed })
@@ -376,6 +404,7 @@ router.patch('/product/:id/visibility', async (req, res, next) => {
 router.post('/promoter-links', async (req, res, next) => {
   try {
     const merchant = await getMerchant(req)
+    ensureFunnelActive(merchant)
     const body = z.object({
       productId: z.string(),
       promoterName: z.string().min(1),

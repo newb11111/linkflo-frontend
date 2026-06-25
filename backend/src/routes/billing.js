@@ -5,6 +5,7 @@ const { z } = require('zod')
 const prisma = require('../lib/prisma')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { PLANS, getPlan } = require('../lib/plans')
+const { writeLedger, roundCredit: roundWalletCredit } = require('../lib/wallet')
 
 const PLAN_PRICES = Object.fromEntries(Object.entries(PLANS).map(([k, v]) => [k, v.price]))
 const SKU_CREDIT_PRICE = 100
@@ -23,6 +24,7 @@ function getBaseUrl(req) {
 }
 
 async function ensureMonthlyBilling(db, merchant) {
+  if (merchant.planStatus !== 'ACTIVE') return merchant
   const now = new Date()
   const nextBillingAt = merchant.nextBillingAt || addOneMonth(merchant.createdAt || now)
   if (nextBillingAt > now) return merchant
@@ -54,7 +56,7 @@ async function ensureMonthlyBilling(db, merchant) {
         data: { planStatus: 'PAST_DUE', nextBillingAt }
       })
     }
-    await tx.billingTransaction.create({
+    const bt = await tx.billingTransaction.create({
       data: {
         merchantId: merchant.id,
         type: 'MONTHLY_PLAN_FEE',
@@ -64,6 +66,18 @@ async function ensureMonthlyBilling(db, merchant) {
         status: 'PAID',
         rawPayload: { autoMonthlyDeduct: true, chargedAt: now.toISOString(), atomicDebit: true }
       }
+    })
+    await writeLedger(tx, {
+      merchantId: merchant.id,
+      bucket: 'PAID',
+      direction: 'DEBIT',
+      amount: cost,
+      balanceBefore: current,
+      balanceAfter: current - cost,
+      category: 'MONTHLY_PLAN_FEE',
+      referenceType: 'BillingTransaction',
+      referenceId: bt.id,
+      note: 'Auto monthly AI Funnel plan deduction'
     })
     return tx.merchant.findUnique({ where: { id: merchant.id }, include: { user: true } })
   })
@@ -199,6 +213,20 @@ router.post('/merchant/apply-credit', async (req, res, next) => {
           rawPayload: { description, paidByCredit: true, atomicDebit: true }
         }
       })
+      const before = roundWalletCredit(merchant.creditBalance || 0)
+      const after = roundWalletCredit(before - cost)
+      await writeLedger(db, {
+        merchantId: merchant.id,
+        bucket: 'PAID',
+        direction: 'DEBIT',
+        amount: cost,
+        balanceBefore: before,
+        balanceAfter: after,
+        category: body.type,
+        referenceType: 'BillingTransaction',
+        referenceId: tx.id,
+        note: description
+      })
       const updated = await db.merchant.findUnique({ where: { id: merchant.id } })
       return { tx, merchant: updated }
     })
@@ -290,9 +318,25 @@ router.post('/billplz-callback', async (req, res, next) => {
       })
       if (paidTx.count !== 1) return
       if (tx.merchantId && tx.type === 'CREDIT_TOPUP' && Number(tx.creditAmount) > 0) {
+        const merchant = await db.merchant.findUnique({ where: { id: tx.merchantId } })
+        const before = roundWalletCredit(merchant?.creditBalance || 0)
+        const amount = roundWalletCredit(tx.creditAmount || 0)
+        const after = roundWalletCredit(before + amount)
         await db.merchant.update({
           where: { id: tx.merchantId },
-          data: { creditBalance: { increment: Number(tx.creditAmount || 0) }, planStatus: 'ACTIVE' }
+          data: { creditBalance: after }
+        })
+        await writeLedger(db, {
+          merchantId: tx.merchantId,
+          bucket: 'PAID',
+          direction: 'CREDIT',
+          amount,
+          balanceBefore: before,
+          balanceAfter: after,
+          category: 'CREDIT_TOPUP',
+          referenceType: 'BillingTransaction',
+          referenceId: tx.id,
+          note: 'Billplz paid credit topup'
         })
       }
     })

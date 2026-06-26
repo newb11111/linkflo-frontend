@@ -50,6 +50,12 @@ export default function MemberDashboard() {
 
   useEffect(() => { load() }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    if (['home','earn','store','wallet','funnel','menu'].includes(tab)) setActive(tab)
+  }, [])
+
   const member = data?.member || {}
   const activeFunnel = Boolean(member.hasActiveFunnel)
   const bonusCapPercent = pct(member.bonusCap)
@@ -371,7 +377,7 @@ export default function MemberDashboard() {
 
       <section className="lf-soft-card">
         <div className="lf-menu-list">
-          <Link href="/merchant">进入 Funnel Dashboard</Link>
+          <Link href="/member/funnel">进入 Funnel Dashboard</Link>
           <button onClick={() => setActive('earn')}>Marketing Library / Submit Proof</button>
           <button onClick={() => setActive('wallet')}>Transaction History</button>
           <button onClick={logout}>Logout</button>
@@ -428,7 +434,7 @@ function ProductStatus({ activeFunnel, member, setActive, large }) {
       <h3>AI Funnel - {member.plan || 'Active'}</h3>
       <p>下次扣费：{member.nextBillingAt ? new Date(member.nextBillingAt).toLocaleDateString() : '-'}</p>
     </div>
-    <Link className="lf-main-btn as-link" href="/merchant">进入 Funnel</Link>
+    <Link className="lf-main-btn as-link" href="/member/funnel">进入 Funnel</Link>
   </div>
 }
 

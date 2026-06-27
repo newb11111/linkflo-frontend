@@ -88,6 +88,117 @@ const DEFAULT_STORE_TEXT = {
   PARTNER_CRM_ASSISTANT: { zh:['Partner AI CRM Assistant','Partner 产品：跟进 lead、记录客户和提醒成交动作。'], en:['Partner AI CRM Assistant','Partner product: follow up leads, record customers and trigger sales reminders.'], bm:['Partner AI CRM Assistant','Produk partner: follow up lead, rekod pelanggan dan reminder sales.'] }
 }
 
+
+const COMING_SOON_PRODUCTS = [
+  {
+    code: 'COMING_AI_ACADEMY',
+    icon: '🎓',
+    tone: 'orange',
+    category: 'AI Academy',
+    zh: ['AI 学院', '学习 AI 产品、AI Funnel、推广内容和实际变现路线。'],
+    en: ['AI Academy', 'Learn AI products, AI funnels, promotion and practical monetization paths.'],
+    bm: ['Akademi AI', 'Belajar produk AI, AI Funnel, kandungan promosi dan cara menjana pendapatan secara praktikal.']
+  },
+  {
+    code: 'COMING_AI_WHATSAPP_SCRIPT',
+    icon: '💬',
+    tone: 'green',
+    category: 'AI Sales',
+    zh: ['AI WhatsApp 成交话术', '根据产品和顾客问题，生成更自然的 WhatsApp 回复和成交话术。'],
+    en: ['AI WhatsApp Sales Script', 'Generate natural WhatsApp replies and closing scripts based on your product and customer questions.'],
+    bm: ['Skrip Jualan WhatsApp AI', 'Jana balasan WhatsApp dan skrip closing yang lebih natural berdasarkan produk dan soalan pelanggan.']
+  },
+  {
+    code: 'COMING_AI_CAPTION',
+    icon: '✨',
+    tone: 'pink',
+    category: 'AI Marketing',
+    zh: ['AI 内容文案工具', '快速生成 Story、帖子、短视频标题和推广文案。'],
+    en: ['AI Content Caption Tool', 'Quickly generate Story captions, post copy, short-video titles and campaign text.'],
+    bm: ['Alat Kapsyen AI', 'Jana kapsyen Story, copy posting, tajuk video pendek dan teks promosi dengan cepat.']
+  },
+  {
+    code: 'COMING_PARTNER_AI',
+    icon: '🤝',
+    tone: 'blue',
+    category: 'Partner AI',
+    zh: ['Partner AI 产品', '未来会开放给 AI 产品商家上架，由 Linkflo 会员和 Ambassador 帮忙推广。'],
+    en: ['Partner AI Products', 'Soon, AI product partners can list their tools and let Linkflo members and Ambassadors promote them.'],
+    bm: ['Produk AI Partner', 'Akan datang, pemilik produk AI boleh senaraikan tool mereka dan dipromosikan oleh member serta Ambassador Linkflo.']
+  }
+]
+
+const TRANSLATION_OVERRIDES = {
+  zh: {
+    linkfloMember:'Linkflo 会员', syncing:'正在同步…', hello:'你好', thanksSupport:'欢迎回到 Linkflo AI 产品中心', verifiedMember:'已认证会员', unverifiedMember:'未认证会员', member:'会员',
+    paidCredit:'充值额度', bonusCredit:'奖励积分', bonusCap:'奖励积分抵扣上限', viewDetails:'查看详情 ›', bonusCapHelp:'等级越高，每笔订单可使用的奖励积分越多。',
+    nextStep:'下一步建议', monthlyMissionProgress:'本月任务进度', maintainLevel:'再完成 {count} 个任务即可维持当前等级。', noMonthlyRequired:'当前等级没有强制发帖任务。', submitStoryProof:'上传 Story 证明',
+    myProducts:'我的 AI 产品', recommended:'推荐 AI 产品', all:'全部 ›', noStoreItems:'目前还没有可购买的产品。',
+    earnTitle:'赚取奖励积分', earnSub:'分享素材、邀请朋友、提交发帖证明，赚取奖励积分。', myReferralLink:'我的推荐链接', noReferral:'系统还没有生成推荐码，请联系管理员。', copyLink:'复制链接', shareWhatsApp:'分享到 WhatsApp', monthlyMission:'本月推广任务', posts:'个帖子', marketingMaterials:'推广素材库', noMaterials:'管理员还没有上传素材。', open:'打开', copy:'复制', captionCopied:'文案已复制。',
+    submitProof:'提交证明', postUrlOptional:'帖子链接，可不填', captionOptional:'文案备注，可不填', uploadProof:'上传截图证明', uploaded:'已上传：{url}', proofRecords:'证明记录', noProofRecords:'还没有提交记录。',
+    productStore:'AI 产品中心', productStoreDesc:'发现并开通 Linkflo 的 AI 产品。现在可用的产品会清楚显示，未上线的产品只会显示为即将推出。', linkfloAiProducts:'Linkflo AI 产品', partnerAiProducts:'Partner AI 产品', viewPlans:'查看配套', hidePlans:'收起配套', managePlans:'管理配套', openMyAi:'去我的 AI', currentActivePlan:'当前配套', planOptions:'选择配套', createWorkspace:'创建工作区', searchAiProducts:'搜索 AI 产品...', featuredAiProducts:'精选 AI 产品', requestDemo:'预约 Demo', wallet:'钱包', walletDesc:'查看充值额度、奖励积分和交易记录。', totalCredit:'总额度', topupPaidCredit:'充值额度', topup:'充值', recentTransactions:'最近交易', noTransactions:'还没有交易记录。',
+    aiFunnel:'AI Funnel', aiFunnelDesc:'用 AI 创建成交页、推广链接，并追踪 WhatsApp 点击。', menu:'菜单', menuDesc:'身份认证、订单、Funnel、交易和账户设置。', kycVerification:'身份认证', kycHint:'未认证也可以使用系统，但奖励积分每单最多只能抵扣 5%。认证通过后可升级为已认证会员，解锁 30% 抵扣。', submitKyc:'提交认证', latestKycStatus:'最新认证状态：', levelRules:'等级规则 / 抵扣上限', referralHistory:'推荐记录', orders:'订单', settings:'设置', logout:'登出',
+    home:'首页', hub:'产品中心', myAi:'我的 AI', credits:'积分', earn:'赚积分', store:'产品中心', funnel:'我的 AI', price:'价格', bonusMax:'最多可抵扣', needPaid:'还需充值额度', currentPlan:'当前配套', switchPlan:'切换配套', activateMonthly:'按月开通', buyNow:'立即购买', alreadyActivated:'已开通，不会重复扣款',
+    openFunnel:'进入 Funnel', aiFunnelNotActive:'AI Funnel 尚未开通', aiFunnelNotActiveDesc:'开通后可以创建 Funnel、推广链接和查看点击数据。', activateFunnel:'开通 AI Funnel', nextBilling:'下次扣费：{date}',
+    completeKycTitle:'完成身份认证，解锁更高抵扣', completeKycText:'认证通过后，奖励积分抵扣上限可以从 5% 提升到 30%。', completeKycBtn:'立即认证', morePostsTitle:'再完成 {count} 个分享任务', morePostsText:'本月完成 {required} 个审核通过的帖子或 Story，即可维持或提升 Ambassador 等级。', uploadStory:'上传 Story 证明', activateFunnelTitle:'开通 AI Funnel', activateFunnelText:'用额度开通 Funnel 后，就可以创建产品成交页、推广链接和点击追踪。', goActivate:'去开通产品', continueEarnTitle:'继续赚取奖励积分', continueEarnText:'复制推荐链接或使用素材发布 Story，继续累积可抵扣的奖励积分。', goEarn:'去赚积分',
+    quickUpload:'上传证明', inviteFriends:'邀请好友', materialLibrary:'素材库', buyService:'AI 产品', confirmPurchase:'确认购买 {name}？\n价格：{price} 积分\n奖励积分最多可抵：{bonus} 积分（{cap}%）\n剩余部分会扣充值额度。', confirmSwitch:'确认把 AI Funnel 切换到 {name}？\n系统会扣除本月配套费用，并把原本配套替换成新配套。', sameFunnelNoCharge:'你已经开通这个 AI Funnel 配套，不会重复扣款。', purchaseSuccess:'购买成功。', referralCopied:'推荐链接已复制。', uploading:'上传中…', uploadSuccess:'上传成功。', kycSubmitted:'认证资料已提交。', proofSubmitted:'发帖证明已提交。', topupBillCreated:'充值付款链接已创建。', productService:'Linkflo 产品 / 服务',
+    myAiProducts:'我的 AI 产品', myAiDesc:'这里显示你已经开通的 AI 产品和工作区。', aiFunnelWorkspaces:'AI Funnel 工作区', noActiveProducts:'还没有开通任何 AI 产品。请先到产品中心开通。', createNewFunnel:'创建新的 AI Funnel', openProduct:'打开产品', creditsTitle:'积分中心', creditsDesc:'钱包、赚积分和奖励记录集中在这里。', walletTab:'钱包', earnTab:'赚积分', rewardsTab:'奖励', drawerTitle:'功能菜单', notifications:'通知', noNotifications:'目前没有新通知。', kycDrawerHint:'身份认证', ordersBilling:'订单与扣费', supportHelp:'客服与帮助', accountSettings:'账户设置',
+    aiProductHubLabel:'AI 产品中心', availableNow:'目前可用', comingSoon:'即将推出', comingSoonDesc:'这些产品还在准备中，暂时不会显示购买按钮。', notifyMe:'上线提醒', allCategory:'全部', aiFunnelCategory:'AI Funnel', comingSoonCategory:'即将推出', paidShort:'充值', bonusShort:'奖励', referrals:'推荐人数', paidReferrals:'付费推荐', aiFunnelWorkspace:'AI Funnel 工作区', fullNamePlaceholder:'真实姓名', icPlaceholder:'身份证 / 护照号码', phonePlaceholder:'手机 / WhatsApp', socialProfilePlaceholder:'社交媒体主页链接', icFront:'身份证正面', icBack:'身份证背面', selfie:'自拍照'
+  },
+  en: {
+    linkfloMember:'Linkflo Member', syncing:'Syncing…', hello:'Hi', thanksSupport:'Welcome back to Linkflo AI Product Hub', verifiedMember:'Verified Member', unverifiedMember:'Unverified Member', member:'Member',
+    paidCredit:'Paid Credit', bonusCredit:'Bonus Credit', bonusCap:'Bonus Credit usage cap', viewDetails:'View details ›', bonusCapHelp:'The higher your level, the more Bonus Credit you can use per order.',
+    nextStep:'Recommended Next Step', monthlyMissionProgress:'Monthly Mission Progress', maintainLevel:'Complete {count} more tasks to keep your current level.', noMonthlyRequired:'Your current level has no required monthly posting tasks.', submitStoryProof:'Submit Story Proof',
+    myProducts:'My AI Products', recommended:'Recommended AI Products', all:'View all ›', noStoreItems:'No purchasable products are available yet.',
+    earnTitle:'Earn Bonus Credit', earnSub:'Share materials, invite friends, submit proof, and earn Bonus Credit.', myReferralLink:'My Referral Link', noReferral:'No referral code has been generated yet. Please contact Admin.', copyLink:'Copy Link', shareWhatsApp:'Share to WhatsApp', monthlyMission:'Monthly Promotion Mission', posts:'posts', marketingMaterials:'Marketing Materials', noMaterials:'No materials have been uploaded by Admin yet.', open:'Open', copy:'Copy', captionCopied:'Caption copied.',
+    submitProof:'Submit Proof', postUrlOptional:'Post URL, optional', captionOptional:'Caption or note, optional', uploadProof:'Upload screenshot proof', uploaded:'Uploaded: {url}', proofRecords:'Proof Records', noProofRecords:'No proof submissions yet.',
+    productStore:'AI Product Hub', productStoreDesc:'Discover and activate Linkflo AI products. Available products are shown clearly; products not ready yet are marked as Coming Soon.', linkfloAiProducts:'Linkflo AI Products', partnerAiProducts:'Partner AI Products', viewPlans:'View Plans', hidePlans:'Hide Plans', managePlans:'Manage Plans', openMyAi:'Go to My AI', currentActivePlan:'Current Plan', planOptions:'Plan Options', createWorkspace:'Create Workspace', searchAiProducts:'Search AI products...', featuredAiProducts:'Featured AI Products', requestDemo:'Request Demo', wallet:'Wallet', walletDesc:'View Paid Credit, Bonus Credit, and transactions.', totalCredit:'Total Credit', topupPaidCredit:'Top up Paid Credit', topup:'Top Up', recentTransactions:'Recent Transactions', noTransactions:'No transactions yet.',
+    aiFunnel:'AI Funnel', aiFunnelDesc:'Create AI sales funnels, promoter links, and track WhatsApp clicks.', menu:'Menu', menuDesc:'KYC, orders, Funnel, transactions, and account settings.', kycVerification:'Identity Verification', kycHint:'You can use the system without verification, but Bonus Credit can only cover up to 5% per order. Once approved, you become a Verified Member and unlock 30%.', submitKyc:'Submit Verification', latestKycStatus:'Latest verification status: ', levelRules:'Level Rules / Discount Caps', referralHistory:'Referral History', orders:'Orders', settings:'Settings', logout:'Log Out',
+    home:'Home', hub:'Hub', myAi:'My AI', credits:'Credits', earn:'Earn', store:'Hub', funnel:'My AI', price:'Price', bonusMax:'Bonus max', needPaid:'Paid Credit needed', currentPlan:'Current Plan', switchPlan:'Switch Plan', activateMonthly:'Activate Monthly', buyNow:'Buy Now', alreadyActivated:'Already active, no duplicate charge',
+    openFunnel:'Open Funnel', aiFunnelNotActive:'AI Funnel is not active yet', aiFunnelNotActiveDesc:'Activate it to create funnels, promoter links, and view click data.', activateFunnel:'Activate AI Funnel', nextBilling:'Next billing: {date}',
+    completeKycTitle:'Complete verification to unlock higher usage', completeKycText:'After approval, your Bonus Credit usage cap can increase from 5% to 30%.', completeKycBtn:'Verify Now', morePostsTitle:'Complete {count} more sharing tasks', morePostsText:'Complete {required} approved posts or stories this month to keep or upgrade your Ambassador level.', uploadStory:'Submit Story Proof', activateFunnelTitle:'Activate AI Funnel', activateFunnelText:'Use credit to activate Funnel, then create sales pages, promoter links, and click tracking.', goActivate:'Activate Product', continueEarnTitle:'Keep Earning Bonus Credit', continueEarnText:'Copy your referral link or share campaign materials to keep earning Bonus Credit.', goEarn:'Go Earn',
+    quickUpload:'Submit Proof', inviteFriends:'Invite Friends', materialLibrary:'Materials', buyService:'AI Products', confirmPurchase:'Confirm purchase of {name}?\nPrice: {price} credits\nBonus Credit can cover up to: {bonus} credits ({cap}%)\nThe remaining amount will use Paid Credit.', confirmSwitch:'Confirm switching AI Funnel to {name}?\nThe system will charge this month’s plan fee and replace your current Funnel plan.', sameFunnelNoCharge:'You are already on this AI Funnel plan. No duplicate charge will be made.', purchaseSuccess:'Purchase successful.', referralCopied:'Referral link copied.', uploading:'Uploading…', uploadSuccess:'Upload successful.', kycSubmitted:'Verification submitted.', proofSubmitted:'Proof submitted.', topupBillCreated:'Top-up payment link created.', productService:'Linkflo product / service',
+    myAiProducts:'My AI Products', myAiDesc:'Open and manage the AI products and workspaces you have activated.', aiFunnelWorkspaces:'AI Funnel Workspaces', noActiveProducts:'No active AI products yet. Activate one from the Hub first.', createNewFunnel:'Create New AI Funnel', openProduct:'Open Product', creditsTitle:'Credits Center', creditsDesc:'Wallet, Earn, and Rewards are combined here.', walletTab:'Wallet', earnTab:'Earn', rewardsTab:'Rewards', drawerTitle:'Menu Drawer', notifications:'Notifications', noNotifications:'No new notifications.', kycDrawerHint:'Identity Verification', ordersBilling:'Orders & Billing', supportHelp:'Support & Help', accountSettings:'Account Settings',
+    aiProductHubLabel:'AI Product Hub', availableNow:'Available Now', comingSoon:'Coming Soon', comingSoonDesc:'These products are still being prepared and do not have purchase buttons yet.', notifyMe:'Notify Me', allCategory:'All', aiFunnelCategory:'AI Funnel', comingSoonCategory:'Coming Soon', paidShort:'Paid', bonusShort:'Bonus', referrals:'Referrals', paidReferrals:'Paid Referrals', aiFunnelWorkspace:'AI Funnel Workspace', fullNamePlaceholder:'Full name', icPlaceholder:'IC / Passport number', phonePlaceholder:'Phone / WhatsApp', socialProfilePlaceholder:'Social media profile link', icFront:'IC Front', icBack:'IC Back', selfie:'Selfie'
+  },
+  bm: {
+    linkfloMember:'Ahli Linkflo', syncing:'Sedang sync…', hello:'Hai', thanksSupport:'Selamat kembali ke Linkflo AI Product Hub', verifiedMember:'Ahli Disahkan', unverifiedMember:'Ahli Belum Disahkan', member:'Ahli',
+    paidCredit:'Kredit Berbayar', bonusCredit:'Kredit Bonus', bonusCap:'Had penggunaan Kredit Bonus', viewDetails:'Lihat butiran ›', bonusCapHelp:'Semakin tinggi tahap anda, semakin banyak Kredit Bonus boleh digunakan untuk setiap pesanan.',
+    nextStep:'Langkah Seterusnya', monthlyMissionProgress:'Kemajuan Misi Bulanan', maintainLevel:'Selesaikan {count} tugasan lagi untuk kekalkan tahap anda.', noMonthlyRequired:'Tahap anda sekarang tiada syarat posting bulanan.', submitStoryProof:'Hantar Bukti Story',
+    myProducts:'Produk AI Saya', recommended:'Produk AI Dicadangkan', all:'Lihat semua ›', noStoreItems:'Belum ada produk yang boleh dibeli.',
+    earnTitle:'Jana Kredit Bonus', earnSub:'Kongsi bahan promosi, jemput kawan, hantar bukti dan jana Kredit Bonus.', myReferralLink:'Pautan Referral Saya', noReferral:'Kod referral belum dijana. Sila hubungi Admin.', copyLink:'Salin Pautan', shareWhatsApp:'Kongsi ke WhatsApp', monthlyMission:'Misi Promosi Bulanan', posts:'posting', marketingMaterials:'Bahan Promosi', noMaterials:'Admin belum muat naik bahan promosi.', open:'Buka', copy:'Salin', captionCopied:'Caption disalin.',
+    submitProof:'Hantar Bukti', postUrlOptional:'URL posting, tidak wajib', captionOptional:'Caption atau nota, tidak wajib', uploadProof:'Muat naik screenshot bukti', uploaded:'Telah dimuat naik: {url}', proofRecords:'Rekod Bukti', noProofRecords:'Belum ada bukti dihantar.',
+    productStore:'AI Product Hub', productStoreDesc:'Cari dan aktifkan produk AI Linkflo. Produk yang tersedia akan dipaparkan dengan jelas; produk yang belum siap akan ditanda sebagai Akan Datang.', linkfloAiProducts:'Produk AI Linkflo', partnerAiProducts:'Produk AI Partner', viewPlans:'Lihat Pelan', hidePlans:'Tutup Pelan', managePlans:'Urus Pelan', openMyAi:'Pergi ke My AI', currentActivePlan:'Pelan Semasa', planOptions:'Pilihan Pelan', createWorkspace:'Cipta Workspace', searchAiProducts:'Cari produk AI...', featuredAiProducts:'Produk AI Pilihan', requestDemo:'Minta Demo', wallet:'Wallet', walletDesc:'Lihat Kredit Berbayar, Kredit Bonus dan transaksi.', totalCredit:'Jumlah Kredit', topupPaidCredit:'Tambah Nilai Kredit Berbayar', topup:'Tambah Nilai', recentTransactions:'Transaksi Terkini', noTransactions:'Belum ada transaksi.',
+    aiFunnel:'AI Funnel', aiFunnelDesc:'Cipta sales funnel AI, promoter link dan tracking klik WhatsApp.', menu:'Menu', menuDesc:'Pengesahan identiti, pesanan, Funnel, transaksi dan tetapan akaun.', kycVerification:'Pengesahan Identiti', kycHint:'Anda boleh guna sistem tanpa pengesahan, tetapi Kredit Bonus hanya boleh cover maksimum 5% setiap pesanan. Selepas diluluskan, anda menjadi Ahli Disahkan dan unlock 30%.', submitKyc:'Hantar Pengesahan', latestKycStatus:'Status pengesahan terkini: ', levelRules:'Peraturan Tahap / Had Diskaun', referralHistory:'Rekod Referral', orders:'Pesanan', settings:'Tetapan', logout:'Log Keluar',
+    home:'Utama', hub:'Hub', myAi:'AI Saya', credits:'Kredit', earn:'Jana', store:'Hub', funnel:'AI Saya', price:'Harga', bonusMax:'Maksimum bonus', needPaid:'Perlu Kredit Berbayar', currentPlan:'Pelan Semasa', switchPlan:'Tukar Pelan', activateMonthly:'Aktif Bulanan', buyNow:'Beli Sekarang', alreadyActivated:'Sudah aktif, tiada caj berulang',
+    openFunnel:'Buka Funnel', aiFunnelNotActive:'AI Funnel belum aktif', aiFunnelNotActiveDesc:'Aktifkan untuk cipta funnel, promoter link dan lihat data klik.', activateFunnel:'Aktifkan AI Funnel', nextBilling:'Caj seterusnya: {date}',
+    completeKycTitle:'Sahkan identiti untuk unlock penggunaan lebih tinggi', completeKycText:'Selepas diluluskan, had penggunaan Kredit Bonus boleh naik daripada 5% kepada 30%.', completeKycBtn:'Sahkan Sekarang', morePostsTitle:'Selesaikan {count} tugasan perkongsian lagi', morePostsText:'Selesaikan {required} posting atau story yang diluluskan bulan ini untuk kekalkan atau naikkan tahap Ambassador.', uploadStory:'Hantar Bukti Story', activateFunnelTitle:'Aktifkan AI Funnel', activateFunnelText:'Gunakan kredit untuk aktifkan Funnel, kemudian cipta sales page, promoter link dan tracking klik.', goActivate:'Aktifkan Produk', continueEarnTitle:'Terus Jana Kredit Bonus', continueEarnText:'Salin pautan referral atau kongsi bahan promosi untuk terus kumpul Kredit Bonus.', goEarn:'Pergi Jana',
+    quickUpload:'Hantar Bukti', inviteFriends:'Jemput Kawan', materialLibrary:'Bahan', buyService:'Produk AI', confirmPurchase:'Sahkan pembelian {name}?\nHarga: {price} kredit\nKredit Bonus boleh cover sehingga: {bonus} kredit ({cap}%)\nBaki akan ditolak daripada Kredit Berbayar.', confirmSwitch:'Sahkan tukar AI Funnel kepada {name}?\nSistem akan caj yuran pelan bulan ini dan gantikan pelan Funnel semasa.', sameFunnelNoCharge:'Anda sudah menggunakan pelan AI Funnel ini. Tiada caj berulang dibuat.', purchaseSuccess:'Pembelian berjaya.', referralCopied:'Pautan referral disalin.', uploading:'Sedang muat naik…', uploadSuccess:'Muat naik berjaya.', kycSubmitted:'Pengesahan telah dihantar.', proofSubmitted:'Bukti telah dihantar.', topupBillCreated:'Pautan bayaran top-up telah dicipta.', productService:'Produk / servis Linkflo',
+    myAiProducts:'Produk AI Saya', myAiDesc:'Buka dan urus produk AI serta workspace yang telah anda aktifkan.', aiFunnelWorkspaces:'Workspace AI Funnel', noActiveProducts:'Belum ada produk AI aktif. Aktifkan satu dari Hub dahulu.', createNewFunnel:'Cipta AI Funnel Baharu', openProduct:'Buka Produk', creditsTitle:'Pusat Kredit', creditsDesc:'Wallet, Jana dan Ganjaran digabungkan di sini.', walletTab:'Wallet', earnTab:'Jana', rewardsTab:'Ganjaran', drawerTitle:'Menu', notifications:'Notifikasi', noNotifications:'Tiada notifikasi baharu.', kycDrawerHint:'Pengesahan Identiti', ordersBilling:'Pesanan & Bil', supportHelp:'Sokongan & Bantuan', accountSettings:'Tetapan Akaun',
+    aiProductHubLabel:'AI Product Hub', availableNow:'Tersedia Sekarang', comingSoon:'Akan Datang', comingSoonDesc:'Produk ini masih dalam penyediaan dan belum ada butang pembelian.', notifyMe:'Maklumkan Saya', allCategory:'Semua', aiFunnelCategory:'AI Funnel', comingSoonCategory:'Akan Datang', paidShort:'Berbayar', bonusShort:'Bonus', referrals:'Referral', paidReferrals:'Referral Berbayar', aiFunnelWorkspace:'Workspace AI Funnel', fullNamePlaceholder:'Nama penuh', icPlaceholder:'No. IC / Pasport', phonePlaceholder:'Telefon / WhatsApp', socialProfilePlaceholder:'Pautan profil media sosial', icFront:'IC Depan', icBack:'IC Belakang', selfie:'Selfie'
+  }
+}
+for (const langKey of Object.keys(TRANSLATION_OVERRIDES)) {
+  MEMBER_TEXT[langKey] = { ...(MEMBER_TEXT[langKey] || {}), ...TRANSLATION_OVERRIDES[langKey] }
+}
+
+function localizedTierText(tier, mt) {
+  if (tier === 'VERIFIED') return mt('verifiedMember')
+  if (tier === 'GOLD') return 'Gold Ambassador'
+  if (tier === 'DIAMOND') return 'Diamond Ambassador'
+  return mt('unverifiedMember')
+}
+function categoryLabel(cat, mt) {
+  if (cat === 'All') return mt('allCategory')
+  if (cat === 'AI Funnel') return mt('aiFunnelCategory')
+  if (cat === 'Coming Soon') return mt('comingSoonCategory')
+  return cat
+}
+function comingSoonContent(item, lang) {
+  const row = item[lang] || item.zh || item.en
+  return { name: row[0], description: row[1] }
+}
+
 function formatText(template, vars = {}) {
   return String(template || '').replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''))
 }
@@ -213,14 +324,14 @@ export default function MemberDashboard() {
   const member = data?.member || {}
   const activeFunnel = Boolean(member.hasActiveFunnel)
   const localizedItems = (data?.storeItems || []).map(item => localizeStoreItem(item, lang))
-  const storeCategories = ['All', ...Array.from(new Set(localizedItems.map(item => productTone(item).category)))]
+  const storeCategories = ['All', 'AI Funnel', 'Coming Soon']
   const funnelPlanItems = localizedItems
     .filter(item => getPlanCodeFromItem(item))
     .sort((a, b) => ({ STARTER: 1, GROWTH: 2, SCALE: 3 }[getPlanCodeFromItem(a)] || 9) - ({ STARTER: 1, GROWTH: 2, SCALE: 3 }[getPlanCodeFromItem(b)] || 9))
   const nonFunnelStoreItems = localizedItems.filter(item => !getPlanCodeFromItem(item))
   const showFunnelProduct = activeCategory === 'All' || activeCategory === 'AI Funnel'
-  const visibleStoreItems = nonFunnelStoreItems.filter(item => activeCategory === 'All' || productTone(item).category === activeCategory)
-  const featuredItems = localizedItems.filter(item => String(item.code || '').startsWith('FUNNEL_') || String(item.code || '').startsWith('PARTNER_')).slice(0, 4)
+  const visibleStoreItems = activeCategory === 'Coming Soon' ? [] : nonFunnelStoreItems.filter(item => activeCategory === 'All' || productTone(item).category === activeCategory)
+  const featuredItems = funnelPlanItems.slice(0, 1)
   const bonusCapPercent = pct(member.bonusCap)
   const approvedPosts = Number(member.approvedPostsThisMonth || 0)
   const requiredPosts = Number(member.monthlyPostRequired || 0)
@@ -359,7 +470,7 @@ export default function MemberDashboard() {
       <button className="lf-icon-btn" onClick={() => setDrawerOpen(true)} aria-label={mt('menu')}>☰</button>
       <div>
         <strong>{mt('linkfloMember')}</strong>
-        <small>{tierText[member.memberTier] || member.tierLabel || 'Member'}</small>
+        <small>{localizedTierText(member.memberTier, mt)}</small>
       </div>
       <div className="lf-header-actions">
         <LanguageToggle compact />
@@ -453,8 +564,8 @@ export default function MemberDashboard() {
           <p>{mt('totalCredit')}</p>
           <h1>RM {money(Number(member.paidCredit || 0) + Number(member.bonusCredit || 0))}</h1>
           <div className="lf-credit-grid compact">
-            <CreditCard title="Paid" value={`RM ${money(member.paidCredit)}`} icon="💳" tone="blue" />
-            <CreditCard title="Bonus" value={`RM ${money(member.bonusCredit)}`} icon="🎁" tone="pink" />
+            <CreditCard title={mt('paidShort')} value={`RM ${money(member.paidCredit)}`} icon="💳" tone="blue" />
+            <CreditCard title={mt('bonusShort')} value={`RM ${money(member.bonusCredit)}`} icon="🎁" tone="pink" />
           </div>
         </section>
         <section className="lf-soft-card">
@@ -518,8 +629,8 @@ export default function MemberDashboard() {
         <section className="lf-soft-card">
           <div className="lf-section-title"><h2>{mt('referralHistory')}</h2></div>
           <div className="lf-stats-grid">
-            <CreditCard title="Referrals" value={member.referralCount || 0} icon="👥" tone="blue" />
-            <CreditCard title="Paid Referrals" value={member.paidReferralCount || 0} icon="💰" tone="pink" />
+            <CreditCard title={mt('referrals')} value={member.referralCount || 0} icon="👥" tone="blue" />
+            <CreditCard title={mt('paidReferrals')} value={member.paidReferralCount || 0} icon="💰" tone="pink" />
           </div>
         </section>
         <section className="lf-soft-card">
@@ -596,14 +707,14 @@ export default function MemberDashboard() {
     {active === 'store' && <>
       <section className="lf-hub-hero">
         <div>
-          <p className="lf-label">AI PRODUCT HUB</p>
+          <p className="lf-label">{mt('aiProductHubLabel')}</p>
           <h1>{mt('productStore')}</h1>
           <p>{mt('productStoreDesc')}</p>
         </div>
         <div className="lf-hub-search">🔎 {mt('searchAiProducts')}</div>
       </section>
       <section className="lf-category-row">
-        {storeCategories.map(cat => <button key={cat} className={activeCategory === cat ? 'active' : ''} onClick={() => setActiveCategory(cat)}>{cat}</button>)}
+        {storeCategories.map(cat => <button key={cat} className={activeCategory === cat ? 'active' : ''} onClick={() => setActiveCategory(cat)}>{categoryLabel(cat, mt)}</button>)}
       </section>
 
       {showFunnelProduct && !!funnelPlanItems.length && <FunnelProductAccordion
@@ -619,12 +730,13 @@ export default function MemberDashboard() {
       />}
 
       {!!visibleStoreItems.length && <section className="lf-hub-section">
-        <div className="lf-section-title"><h2>{activeCategory === 'Partner AI' ? mt('partnerAiProducts') : activeCategory === 'All' ? mt('featuredAiProducts') : activeCategory}</h2></div>
+        <div className="lf-section-title"><h2>{activeCategory === 'Partner AI' ? mt('partnerAiProducts') : activeCategory === 'All' ? mt('featuredAiProducts') : categoryLabel(activeCategory, mt)}</h2></div>
         <div className="lf-store-grid">
           {visibleStoreItems.map(item => <StoreCard key={item.id} item={item} cap={member.bonusCap} member={member} lang={lang} mt={mt} onBuy={() => purchase(item)} />)}
         </div>
       </section>}
-      {!showFunnelProduct && !visibleStoreItems.length && <section className="lf-soft-card"><p className="lf-muted">{mt('noStoreItems')}</p></section>}
+      {(activeCategory === 'All' || activeCategory === 'Coming Soon') && <ComingSoonSection mt={mt} lang={lang} />}
+      {!showFunnelProduct && activeCategory !== 'Coming Soon' && !visibleStoreItems.length && <section className="lf-soft-card"><p className="lf-muted">{mt('noStoreItems')}</p></section>}
     </>}
 
     {active === 'wallet' && <>
@@ -675,13 +787,13 @@ export default function MemberDashboard() {
         <div className="lf-section-title"><h2>{mt('kycVerification')}</h2><span className="lf-pill">{member.kycStatus || 'UNVERIFIED'}</span></div>
         <p className="lf-muted">{mt('kycHint')}</p>
         <form className="lf-form" onSubmit={submitKyc}>
-          <input placeholder="Full name / 真实姓名" value={kyc.fullName} onChange={e=>setKyc({...kyc, fullName:e.target.value})} />
-          <input placeholder="IC / Passport no." value={kyc.icNumber} onChange={e=>setKyc({...kyc, icNumber:e.target.value})} />
-          <input placeholder="Phone / WhatsApp" value={kyc.phone} onChange={e=>setKyc({...kyc, phone:e.target.value})} />
-          <input placeholder="Social media profile link" value={kyc.socialProfile} onChange={e=>setKyc({...kyc, socialProfile:e.target.value})} />
-          <label className="lf-upload">IC Front<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'icFrontUrl')} /></label>
-          <label className="lf-upload">IC Back<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'icBackUrl')} /></label>
-          <label className="lf-upload">Selfie<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'selfieUrl')} /></label>
+          <input placeholder={mt('fullNamePlaceholder')} value={kyc.fullName} onChange={e=>setKyc({...kyc, fullName:e.target.value})} />
+          <input placeholder={mt('icPlaceholder')} value={kyc.icNumber} onChange={e=>setKyc({...kyc, icNumber:e.target.value})} />
+          <input placeholder={mt('phonePlaceholder')} value={kyc.phone} onChange={e=>setKyc({...kyc, phone:e.target.value})} />
+          <input placeholder={mt('socialProfilePlaceholder')} value={kyc.socialProfile} onChange={e=>setKyc({...kyc, socialProfile:e.target.value})} />
+          <label className="lf-upload">{mt('icFront')}<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'icFrontUrl')} /></label>
+          <label className="lf-upload">{mt('icBack')}<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'icBackUrl')} /></label>
+          <label className="lf-upload">{mt('selfie')}<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'selfieUrl')} /></label>
           <button className="lf-main-btn">{mt('submitKyc')}</button>
         </form>
         {data?.kyc && <p className="lf-muted">{mt('latestKycStatus')}<b>{data.kyc.status}</b> {data.kyc.adminNote ? `｜${data.kyc.adminNote}` : ''}</p>}
@@ -707,19 +819,19 @@ export default function MemberDashboard() {
           <button onClick={() => navigate('credits','wallet')}>{mt('wallet')}</button>
           <button onClick={() => navigate('credits','earn')}>{mt('earnTitle')}</button>
           <button onClick={() => navigate('credits','rewards')}>{mt('rewardsTab')}</button>
-          <Link href="/member/funnel">AI Funnel Workspace</Link>
+          <Link href="/member/funnel">{mt('aiFunnelWorkspace')}</Link>
         </div>
         <details className="lf-drawer-details">
           <summary>{mt('kycDrawerHint')} · {member.kycStatus || 'UNVERIFIED'}</summary>
           <p className="lf-muted">{mt('kycHint')}</p>
           <form className="lf-form" onSubmit={submitKyc}>
-            <input placeholder="Full name / 真实姓名" value={kyc.fullName} onChange={e=>setKyc({...kyc, fullName:e.target.value})} />
-            <input placeholder="IC / Passport no." value={kyc.icNumber} onChange={e=>setKyc({...kyc, icNumber:e.target.value})} />
-            <input placeholder="Phone / WhatsApp" value={kyc.phone} onChange={e=>setKyc({...kyc, phone:e.target.value})} />
-            <input placeholder="Social media profile link" value={kyc.socialProfile} onChange={e=>setKyc({...kyc, socialProfile:e.target.value})} />
-            <label className="lf-upload">IC Front<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'icFrontUrl')} /></label>
-            <label className="lf-upload">IC Back<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'icBackUrl')} /></label>
-            <label className="lf-upload">Selfie<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'selfieUrl')} /></label>
+            <input placeholder={mt('fullNamePlaceholder')} value={kyc.fullName} onChange={e=>setKyc({...kyc, fullName:e.target.value})} />
+            <input placeholder={mt('icPlaceholder')} value={kyc.icNumber} onChange={e=>setKyc({...kyc, icNumber:e.target.value})} />
+            <input placeholder={mt('phonePlaceholder')} value={kyc.phone} onChange={e=>setKyc({...kyc, phone:e.target.value})} />
+            <input placeholder={mt('socialProfilePlaceholder')} value={kyc.socialProfile} onChange={e=>setKyc({...kyc, socialProfile:e.target.value})} />
+            <label className="lf-upload">{mt('icFront')}<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'icFrontUrl')} /></label>
+            <label className="lf-upload">{mt('icBack')}<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'icBackUrl')} /></label>
+            <label className="lf-upload">{mt('selfie')}<input type="file" accept="image/*" onChange={e=>upload(e.target.files?.[0], setKyc, 'selfieUrl')} /></label>
             <button className="lf-main-btn">{mt('submitKyc')}</button>
           </form>
         </details>
@@ -752,11 +864,11 @@ function DesktopSidebar({ active, setActive, member, mt, logout }) {
       {items.map(([key, icon, label]) => <button key={key} className={active === key ? 'active' : ''} onClick={() => setActive(key)}><span>{icon}</span>{label}</button>)}
     </nav>
     <div className="lf-side-card">
-      <b>{tierIcon[member.memberTier] || '✨'} {tierText[member.memberTier] || 'Member'}</b>
-      <small>Bonus cap {pct(member.bonusCap)}%</small>
-      <button onClick={() => setActive('credits')}>View Credits</button>
+      <b>{tierIcon[member.memberTier] || '✨'} {localizedTierText(member.memberTier, mt)}</b>
+      <small>{mt('bonusCap')} {pct(member.bonusCap)}%</small>
+      <button onClick={() => setActive('credits')}>{mt('creditsTitle')}</button>
     </div>
-    <button className="lf-side-logout" onClick={logout}>Logout</button>
+    <button className="lf-side-logout" onClick={logout}>{mt('logout')}</button>
   </aside>
 }
 
@@ -847,6 +959,30 @@ function FunnelProductAccordion({ plans, cap, member, lang, mt, open, setOpen, o
   </section>
 }
 
+
+function ComingSoonSection({ mt, lang }) {
+  return <section className="lf-hub-section lf-coming-soon-section">
+    <div className="lf-section-title"><h2>{mt('comingSoon')}</h2></div>
+    <p className="lf-muted lf-coming-soon-desc">{mt('comingSoonDesc')}</p>
+    <div className="lf-store-grid">
+      {COMING_SOON_PRODUCTS.map(item => {
+        const content = comingSoonContent(item, lang)
+        return <section className={`lf-soft-card lf-coming-card ${item.tone}`} key={item.code}>
+          <div className="lf-store-top">
+            <span className="lf-store-icon">{item.icon}</span>
+            <div>
+              <span className="lf-pill">{categoryLabel(item.category, mt)}</span>
+              <h2>{content.name}</h2>
+              <p>{content.description}</p>
+            </div>
+          </div>
+          <button className="lf-light-btn" type="button" disabled>{mt('comingSoon')}</button>
+        </section>
+      })}
+    </div>
+  </section>
+}
+
 function StoreMini({ item, cap, member, lang, mt, onBuy }) {
   const displayItem = localizeStoreItem(item, lang)
   const tone = productTone(displayItem)
@@ -856,7 +992,7 @@ function StoreMini({ item, cap, member, lang, mt, onBuy }) {
   return <div className={`lf-store-mini ${tone.color}`}>
     <span className="lf-mini-icon">{tone.icon}</span>
     <div>
-      <em>{tone.category}</em>
+      <em>{categoryLabel(tone.category, mt)}</em>
       <b>{displayItem.name}</b>
       <small>{money(item.price)} Credits</small>
       <p>{mt('bonusMax')} {money(maxBonus)} Credits ({pct(cap)}%)</p>
@@ -879,7 +1015,7 @@ function StoreCard({ item, cap, member, lang, mt, onBuy }) {
     <div className="lf-store-top">
       <span className="lf-store-icon">{tone.icon}</span>
       <div>
-        <span className="lf-pill">{isCurrent ? mt('alreadyActivated') : tone.category}</span>
+        <span className="lf-pill">{isCurrent ? mt('alreadyActivated') : categoryLabel(tone.category, mt)}</span>
         <h2>{displayItem.name}</h2>
         <p>{displayItem.description || mt('productService')}</p>
       </div>
@@ -905,7 +1041,7 @@ function MemberStyles(){return <style jsx global>{`
 .lf-hub-section{margin-top:12px}.lf-funnel-accordion{margin-bottom:14px;overflow:hidden;background:linear-gradient(180deg,#fff,#fbf8ff)}.lf-funnel-main{display:grid;grid-template-columns:54px 1fr;gap:13px;align-items:flex-start}.lf-funnel-main h2{margin:8px 0 4px;font-size:24px;letter-spacing:-.5px}.lf-funnel-main p{margin:0;color:var(--lf-muted);line-height:1.55}.lf-current-plan-line{margin-top:10px;color:#64748b;font-size:13px}.lf-funnel-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.lf-plan-drawer{margin-top:16px;border-top:1px solid var(--lf-border);padding-top:14px;display:grid;gap:10px}.lf-plan-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;border:1px solid #edf0f7;background:#fbfcff;border-radius:19px;padding:13px}.lf-plan-row b{display:block;font-size:17px}.lf-plan-row p{margin:4px 0 9px;color:var(--lf-muted);font-size:13px;line-height:1.45}.lf-plan-meta{display:flex;gap:6px;flex-wrap:wrap}.lf-plan-meta span{font-size:11px;font-weight:900;color:#64748b;background:#f3f6ff;border:1px solid #e8edf7;border-radius:999px;padding:5px 8px}.lf-plan-row button{white-space:nowrap;min-width:118px}@media(max-width:420px){.lf-funnel-actions{grid-template-columns:1fr}.lf-plan-row{grid-template-columns:1fr}.lf-plan-row button{width:100%}.lf-plan-meta{display:grid;grid-template-columns:1fr}}
 
 /* AI Product Hub desktop layout */
-.lf-app-shell{width:100%;min-height:100vh}.lf-desktop-sidebar{display:none}.lf-hub-hero{margin:8px 0 14px;padding:22px;border-radius:28px;background:linear-gradient(135deg,#ffffff,#eef4ff 58%,#f6efff);border:1px solid var(--lf-border);box-shadow:var(--lf-shadow)}.lf-hub-hero h1{margin:0;font-size:28px;letter-spacing:-.9px}.lf-hub-hero p:not(.lf-label){margin:6px 0 0;color:var(--lf-muted)}.lf-hub-search{margin-top:16px;padding:14px 16px;border-radius:18px;background:#fff;border:1px solid #e8edf7;color:#8a94a6;font-weight:800}.lf-category-row{display:flex;gap:8px;overflow:auto;padding:0 0 12px;margin:0 0 6px;scrollbar-width:none}.lf-category-row::-webkit-scrollbar{display:none}.lf-category-row button{white-space:nowrap;border:1px solid #e7eaf5;background:#fff;color:#64748b;padding:10px 14px;border-radius:999px;font-weight:900;cursor:pointer}.lf-category-row button.active{background:linear-gradient(135deg,#6d8dff,#8b5cf6);border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(99,102,241,.18)}.lf-featured-strip{margin-bottom:14px}.lf-featured-grid{display:grid;grid-template-columns:1fr;gap:10px}.lf-store-grid{display:grid;grid-template-columns:1fr;gap:0}.lf-store-card.violet .lf-store-icon,.lf-store-mini.violet .lf-mini-icon{background:linear-gradient(135deg,#ede9fe,#ddd6fe)}.lf-store-card.green .lf-store-icon,.lf-store-mini.green .lf-mini-icon{background:linear-gradient(135deg,#dcfce7,#ccfbf1)}.lf-store-card.pink .lf-store-icon,.lf-store-mini.pink .lf-mini-icon{background:linear-gradient(135deg,#fce7f3,#fee2e2)}.lf-store-card.orange .lf-store-icon,.lf-store-mini.orange .lf-mini-icon{background:linear-gradient(135deg,#ffedd5,#fef3c7)}.lf-store-card.blue .lf-store-icon,.lf-store-mini.blue .lf-mini-icon{background:linear-gradient(135deg,#dbeafe,#e0f2fe)}.lf-store-mini{grid-template-columns:46px 1fr auto}.lf-mini-icon{width:46px;height:46px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:21px}.lf-store-mini em{display:block;font-style:normal;color:#7c3aed;font-size:10px;text-transform:uppercase;font-weight:950;letter-spacing:.05em;margin-bottom:4px}.lf-store-card{transition:transform .16s ease, box-shadow .16s ease}.lf-store-card:hover{transform:translateY(-2px);box-shadow:0 22px 60px rgba(55,65,81,.13)}
+.lf-app-shell{width:100%;min-height:100vh}.lf-desktop-sidebar{display:none}.lf-hub-hero{margin:8px 0 14px;padding:22px;border-radius:28px;background:linear-gradient(135deg,#ffffff,#eef4ff 58%,#f6efff);border:1px solid var(--lf-border);box-shadow:var(--lf-shadow)}.lf-hub-hero h1{margin:0;font-size:28px;letter-spacing:-.9px}.lf-hub-hero p:not(.lf-label){margin:6px 0 0;color:var(--lf-muted)}.lf-hub-search{margin-top:16px;padding:14px 16px;border-radius:18px;background:#fff;border:1px solid #e8edf7;color:#8a94a6;font-weight:800}.lf-category-row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:0 0 12px;margin:0 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}.lf-category-row::-webkit-scrollbar{display:none}.lf-category-row button{white-space:nowrap;flex:0 0 auto;border:1px solid #e7eaf5;background:#fff;color:#64748b;padding:10px 14px;border-radius:999px;font-weight:900;cursor:pointer}.lf-category-row button.active{background:linear-gradient(135deg,#6d8dff,#8b5cf6);border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(99,102,241,.18)}.lf-featured-strip{margin-bottom:14px}.lf-featured-grid{display:grid;grid-template-columns:1fr;gap:10px}.lf-store-grid{display:grid;grid-template-columns:1fr;gap:0}.lf-store-card.violet .lf-store-icon,.lf-store-mini.violet .lf-mini-icon{background:linear-gradient(135deg,#ede9fe,#ddd6fe)}.lf-store-card.green .lf-store-icon,.lf-store-mini.green .lf-mini-icon{background:linear-gradient(135deg,#dcfce7,#ccfbf1)}.lf-store-card.pink .lf-store-icon,.lf-store-mini.pink .lf-mini-icon{background:linear-gradient(135deg,#fce7f3,#fee2e2)}.lf-store-card.orange .lf-store-icon,.lf-store-mini.orange .lf-mini-icon{background:linear-gradient(135deg,#ffedd5,#fef3c7)}.lf-store-card.blue .lf-store-icon,.lf-store-mini.blue .lf-mini-icon{background:linear-gradient(135deg,#dbeafe,#e0f2fe)}.lf-store-mini{grid-template-columns:46px 1fr auto}.lf-mini-icon{width:46px;height:46px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:21px}.lf-store-mini em{display:block;font-style:normal;color:#7c3aed;font-size:10px;text-transform:uppercase;font-weight:950;letter-spacing:.05em;margin-bottom:4px}.lf-coming-soon-desc{margin:-4px 0 12px}.lf-coming-card{opacity:.92}.lf-coming-card .lf-light-btn:disabled{opacity:.75;cursor:not-allowed}.lf-store-card{transition:transform .16s ease, box-shadow .16s ease}.lf-store-card:hover{transform:translateY(-2px);box-shadow:0 22px 60px rgba(55,65,81,.13)}
 @media(min-width:1024px){body{background:linear-gradient(135deg,#eef3ff 0%,#f9fbff 40%,#f7f0ff 100%)}.lf-app-shell{max-width:1260px;margin:22px auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;padding:0 18px}.lf-desktop-sidebar{display:flex;position:sticky;top:22px;height:calc(100vh - 44px);border-radius:28px;background:linear-gradient(180deg,#111a32,#15213e);color:#fff;padding:22px;box-shadow:0 25px 70px rgba(15,23,42,.25);flex-direction:column}.lf-side-brand{display:flex;align-items:center;gap:10px;font-size:18px;margin-bottom:28px}.lf-side-brand span{width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,#4f8dff,#8b5cf6);display:flex;align-items:center;justify-content:center}.lf-desktop-sidebar nav{display:grid;gap:8px}.lf-desktop-sidebar nav button,.lf-side-logout{border:0;border-radius:14px;background:transparent;color:#cbd5e1;text-align:left;padding:12px 13px;font-weight:900;cursor:pointer}.lf-desktop-sidebar nav button span{display:inline-block;width:26px}.lf-desktop-sidebar nav button.active{background:rgba(255,255,255,.12);color:#fff}.lf-side-card{margin-top:auto;background:linear-gradient(135deg,#6d5dfc,#8b5cf6);border-radius:20px;padding:16px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}.lf-side-card b{display:block}.lf-side-card small{display:block;color:#e9d5ff;margin:8px 0 12px}.lf-side-card button{width:100%;border:0;border-radius:13px;background:rgba(255,255,255,.18);color:#fff;padding:10px;font-weight:900;cursor:pointer}.lf-side-logout{margin-top:12px;background:rgba(255,255,255,.08);text-align:center}.lf-phone-shell{max-width:none;margin:0;min-height:calc(100vh - 44px);border-radius:28px;padding:22px 22px 40px;box-shadow:0 25px 80px rgba(15,23,42,.10);border:1px solid #edf1f7;background:rgba(255,255,255,.72);backdrop-filter:blur(18px)}.lf-mobile-header{position:relative;background:transparent;backdrop-filter:none;grid-template-columns:1fr auto}.lf-mobile-header .lf-icon-btn{display:none}.lf-mobile-header strong{text-align:left;font-size:18px}.lf-mobile-header small{text-align:left}.lf-bottom-nav{display:none}.lf-credit-grid{grid-template-columns:repeat(2, minmax(0,1fr))}.lf-quick-row{grid-template-columns:repeat(4,1fr)}.lf-quick-row button:nth-child(n+5){display:block}.lf-soft-card,.lf-total-card,.lf-welcome-card,.lf-hub-hero{border-radius:24px}.lf-featured-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lf-store-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.lf-store-card{margin:0}.lf-page-title h1,.lf-hub-hero h1{font-size:34px}.lf-total-card h1{font-size:42px}.lf-price-box{grid-template-columns:repeat(3,1fr)}.lf-product-status .lf-main-btn{grid-column:auto}.lf-product-status{grid-template-columns:54px 1fr auto}.lf-product-status.large{grid-template-columns:54px 1fr auto;text-align:left}.lf-welcome-card{display:flex;align-items:center;justify-content:space-between}.lf-welcome-card:after{content:'AI Product Hub';display:block;border-radius:18px;padding:18px 22px;background:linear-gradient(135deg,#ede9fe,#e0f2fe);color:#4c1d95;font-weight:950}.lf-hub-hero{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:center}.lf-hub-search{margin-top:0}.lf-category-row{flex-wrap:wrap;overflow:visible}.lf-list-row{grid-template-columns:1fr auto}.lf-material-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:1280px){.lf-featured-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.lf-store-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.lf-credit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
